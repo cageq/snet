@@ -1,4 +1,5 @@
 #pragma once 
+#include <functional>
 #include <memory>
 #include <stdio.h>
 #include <stdlib.h>
@@ -13,6 +14,16 @@
 #include <vector> 
 #include <arpa/inet.h>
 #include <unordered_map> 
+
+template <class Connection> 
+    class  TcpFactory{
+        public: 
+        using ConnectionPtr = std::shared_ptr<Connection>; 
+        std::function<ConnectionPtr()> creator; 
+
+        std::function<void(ConnectionPtr)> releaser; 
+
+    }; 
 
 template<class Connection >
 class TcpServer{
@@ -34,6 +45,21 @@ class TcpServer{
 			do_accept(); 
 			return 0; 
 		}
+        virtual ConnectionPtr create(){ 
+            if (factory.creator){
+                return factory.creator(); 
+            }
+            return std::make_shared<Connection>(); 
+        }
+
+        virtual void release(ConnectionPtr conn ){
+            if (factory.releaser){
+                factory.releaser(conn); 
+            }
+        }
+
+        TcpFactory<Connection>  factory ; 
+    private: 
 
 		void do_accept(){
 			int    desc_ready = false ;
@@ -147,7 +173,7 @@ class TcpServer{
 								/**********************************************/
 								printf("New incoming connection - %d\n", newSd);
 
-								auto conn = std::make_shared<Connection>(); 
+								auto conn = create(); 
 								add_connection(newSd , conn); 
 								conn->init(newSd); 
 								this->set_nonblocking(newSd); 
@@ -177,8 +203,12 @@ class TcpServer{
 								auto ret = conn->do_read(); 
 								if (ret < 0){
 									FD_CLR(sd, &master_set);
+                                    remove_connection(sd); 
+                                    this->release(conn ); 
 								}
-							} 
+							}else {
+                                FD_CLR(sd, &master_set);
+                            }
 
 						} /* End of existing connection is readable */
 					} /* End of if (FD_ISSET(i, &working_set)) */

@@ -69,7 +69,9 @@ class TcpConnection : public std::enable_shared_from_this<T> {
 				}        
 			}
 		}
-
+     int32_t get_id(){
+            return conn_sd; 
+        }
 
 	private: 
 
