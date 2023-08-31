@@ -12,6 +12,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <vector> 
+#include <string> 
 #include <arpa/inet.h>
 #include <unordered_map> 
 
@@ -31,7 +32,9 @@ class TcpServer{
 	public:
 
 		using ConnectionPtr = std::shared_ptr<Connection>; 
-		int start(uint16_t port){ 
+		int start(uint16_t port, const std::string & host = "0.0.0.0"){ 
+
+            listen_addr = host; 
 			listen_sd = socket(AF_INET, SOCK_STREAM, 0);
 			if (listen_sd < 0)
 			{
@@ -40,7 +43,7 @@ class TcpServer{
 			}    
 			this->set_reuse(); 
 			this->set_nonblocking(listen_sd); 
-			do_bind(port); 
+			do_bind(port, host.c_str()); 
 			do_listen(); 
 			do_accept(); 
 			return 0; 
@@ -58,7 +61,26 @@ class TcpServer{
             }
         }
 
+        void add_connection(int sd, ConnectionPtr conn){
+			connection_map[sd] = conn; 
+		}
+		int32_t remove_connection(int sd){
+			return connection_map.erase(sd); 
+		}
+
+		ConnectionPtr find_connection(int sd){
+	 
+			auto itr = connection_map.find(sd); 
+			if(itr != connection_map.end()){
+				return itr->second; 
+			}
+
+			return nullptr; 
+		}
+
         TcpFactory<Connection>  factory ; 
+
+
     private: 
 
 		void do_accept(){
@@ -173,7 +195,7 @@ class TcpServer{
 								/**********************************************/
 								printf("New incoming connection - %d\n", newSd);
 
-								auto conn = create(); 
+								auto conn = std::make_shared<Connection>(); 
 								add_connection(newSd , conn); 
 								conn->init(newSd); 
 								this->set_nonblocking(newSd); 
@@ -272,27 +294,7 @@ class TcpServer{
 				exit(-1);
 			}
 		}
-		void add_connection(int sd, ConnectionPtr conn){
 
-			connection_map[sd] = conn; 
-		}
-		int32_t remove_connection(int sd){
-			return connection_map.erase(sd); 
-		}
-
-		ConnectionPtr find_connection(int sd){
-			//for(auto & c : connections){
-			//	if (c->conn_sd == fd ){
-			//		return c; 
-			//	}
-			//}
-			auto itr = connection_map.find(sd); 
-			if(itr != connection_map.end()){
-				return itr->second; 
-			}
-
-			return nullptr; 
-		}
 
 		void do_listen(){
 			/*************************************************************/
@@ -311,4 +313,6 @@ class TcpServer{
 		int    listen_sd, max_sd;
 		bool is_running = false; 
 		std::unordered_map<uint32_t , ConnectionPtr>  connection_map; 
+        std::string listen_addr; 
+        uint32_t connection_index = 1024; 
 }; 

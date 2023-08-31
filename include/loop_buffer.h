@@ -14,7 +14,8 @@
 #include <thread>
 #include <chrono>
 #include <type_traits>
-#include <mutex>
+#include <memory>
+#include <string.h>
 #include <condition_variable>
 
 
@@ -120,8 +121,6 @@ class LoopBuffer {
 			tail += dataLen;
 			return dataLen;
 		}
-
-
 
 		template <typename F, typename ... Args>
 			int32_t mpush(const F &  data, Args &&... rest) { 					
