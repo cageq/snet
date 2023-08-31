@@ -1,6 +1,7 @@
 #pragma once
 
 #include "loop_buffer.h"
+#include <cstdio>
 #include <errno.h>
 #include <memory>
 #include <netinet/in.h>
@@ -10,6 +11,7 @@
 #include <sys/ioctl.h>
 #include <sys/socket.h>
 #include <sys/time.h>
+#include <netinet/tcp.h>
 #include <thread>
 #include <fcntl.h>
 #include <unistd.h>
@@ -44,6 +46,18 @@ class TcpConnection : public std::enable_shared_from_this<T> {
 			}
 			return -1; 
 		}	
+		void set_tcpdelay(){
+
+			int yes = 1;
+			int result = setsockopt(conn_sd,
+									IPPROTO_TCP,
+									TCP_NODELAY,
+									(char *) &yes, 
+									sizeof(int));    // 1 - on, 0 - off
+			if (result < 0){ 
+				perror("set tcp nodelay failed"); 
+			}
+		}
 		template <typename... Args> 
 			int32_t msend(Args &&...args) {
 				if (is_open()) {
@@ -85,6 +99,7 @@ class TcpConnection : public std::enable_shared_from_this<T> {
 		void init(int fd) {
 			this->conn_sd = fd;
 			is_closed = false;
+			this->set_tcpdelay();
 			//read_thread = std::thread([this]() { this->do_read(); });
 			write_thread = std::thread([this]() { this->do_write(); });
 			write_thread.detach(); 
