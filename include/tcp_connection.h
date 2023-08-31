@@ -34,7 +34,7 @@ class TcpConnection : public std::enable_shared_from_this<T> {
 
 		int32_t send(const char * data, uint32_t dataLen){
 			if(is_open()){
-				send_buffer.push(data, dataLen); 
+				int ret = send_buffer.push(data, dataLen); 
 				send_cond.notify_one(); 
 				return dataLen; 
 			}
@@ -117,32 +117,32 @@ class TcpConnection : public std::enable_shared_from_this<T> {
 
 				if (conn_sd > 0){
 					uint32_t bufSize = kReadBufferSize - read_buffer_pos;
-					int rc = recv(conn_sd, &read_buffer[read_buffer_pos], bufSize, 0);
-					if (rc < 0) {
-						if (errno != EWOULDBLOCK) {
-							perror("  recv() failed");
+					if (bufSize> 0){
+						int rc = recv(conn_sd, &read_buffer[read_buffer_pos], bufSize, 0);
+						if (rc < 0) {
+							if (errno != EWOULDBLOCK) {
+								perror("  recv() failed");
+								is_closed = true;
+							}
+							break;
+						} 
+
+						/**********************************************/
+						/* Check to see if the connection has been    */
+						/* closed by the client                       */
+						/**********************************************/
+						if (rc == 0) {
+							printf("  Connection closed\n");
 							is_closed = true;
+							return -1;         
 						}
-						break;
-					} 
 
-
-
-					/**********************************************/
-					/* Check to see if the connection has been    */
-					/* closed by the client                       */
-					/**********************************************/
-					if (rc == 0) {
-						printf("  Connection closed\n");
-						is_closed = true;
-						return -1;         
+						/**********************************************/
+						/* Data was received                          */
+						/**********************************************/
+						len = rc;
 					}
-
-					/**********************************************/
-					/* Data was received                          */
-					/**********************************************/
-					len = rc;
-					printf("  %d bytes received\n", len);
+						printf("  %d bytes received\n", len);
 					this->process_data(len);
 				}
 
