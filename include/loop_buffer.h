@@ -146,9 +146,6 @@ public:
         return push(data.data(), data.length()); 
     }
 
-    uint32_t push(const std::string_view  & data ) {
-        return push(data.data(), data.length()); 
-    }
     uint32_t push(const char * data ) {
         return push(data, strlen(data)); 
     }
@@ -245,7 +242,7 @@ public:
 
   //left empty space 
   uint32_t  peek() {
-      if constexpr  (std::is_same<NonMutex, Mutex>::value){
+      if constexpr (std::is_same<NonMutex, Mutex>::value){
           return BufferSize -(tail - head) ;
       }else {
         std::lock_guard<Mutex> lk(write_mutex);

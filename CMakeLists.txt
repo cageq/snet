@@ -26,6 +26,6 @@ endif()
 include_directories(include)
 
 
-add_executable(tcpserver src/tcp_server.cpp)
+#add_executable(tcpserver src/tcp_server.cpp)
 
 add_executable(demoserver src/demoserver.cpp)

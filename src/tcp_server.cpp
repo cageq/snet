@@ -22,7 +22,8 @@ int main (int argc, char *argv[])
    char   buffer[80];
    struct sockaddr_in6   addr;
    struct timeval       timeout;
-   struct fd_set        master_set, working_set;
+   struct fd_set        master_set; 
+   struct fd_set working_set;
 
    /*************************************************************/
    /* Create an AF_INET6 stream socket to receive incoming      */
