@@ -14,7 +14,8 @@
 #include <thread>
 #include <chrono>
 #include <type_traits>
-#include <mutex>
+#include <memory>
+#include <string.h>
 #include <condition_variable>
 
  
@@ -135,7 +136,7 @@ public:
 
     template <class T> 
     uint32_t push(const T & data ) {
-        return push((const char *)data, sizeof(T)); 
+        return push((const char *)&data, sizeof(T)); 
     }
     template <class T> 
         uint32_t push(const std::vector<T>  & data ) {

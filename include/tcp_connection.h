@@ -21,12 +21,14 @@ enum ConnectionEvent{
 
 
 template <class T>
+	class TcpServer; 
+template <class T>
 class TcpConnection : public std::enable_shared_from_this<T> {
 
 	public:
-		friend class TcpServer<T>; 
+		friend TcpServer<T> ; 
 		enum {
-			kReadBufferSize = 1024 * 1024 * 8,
+			kReadBufferSize = 1024 * 1024 * 4,
 			kWriteBufferSize = 1024 * 1024 * 8,
 			kMaxPackageLimit = 16 * 1024
 		};
@@ -69,7 +71,7 @@ class TcpConnection : public std::enable_shared_from_this<T> {
 				}        
 			}
 		}
-     int32_t get_id(){
+        int32_t get_id(){
             return conn_sd; 
         }
 
@@ -86,18 +88,21 @@ class TcpConnection : public std::enable_shared_from_this<T> {
 
 		void do_write() {
 			do {
-				wait(1); 
-				auto [data, dataLen] = send_buffer.read();
+                if (send_buffer.empty()){
+                    wait(1); 
+                }else {
+                    auto [data, dataLen] = send_buffer.read();
 
-				if (dataLen > 0 && conn_sd > 0 ) {
-					int rc = ::send(conn_sd, data, dataLen, 0);
-					if (rc < 0) {
-						perror("send() failed");
-						is_closed = true;
-						break;
-					}
-					send_buffer.commit(rc);
-				}
+                    if (dataLen > 0 && conn_sd > 0 ) {
+                        int rc = ::send(conn_sd, data, dataLen, 0);
+                        if (rc < 0) {
+                            perror("send() failed");
+                            is_closed = true;
+                            break;
+                        }
+                        send_buffer.commit(rc);
+                    }
+                }			
 
 			} while (!is_closed);
 		}
@@ -119,32 +124,34 @@ class TcpConnection : public std::enable_shared_from_this<T> {
 
 				if (conn_sd > 0){
 					uint32_t bufSize = kReadBufferSize - read_buffer_pos;
-					int rc = recv(conn_sd, &read_buffer[read_buffer_pos], bufSize, 0);
-					if (rc < 0) {
-						if (errno != EWOULDBLOCK) {
-							perror("  recv() failed");
-							is_closed = true;
-						}
-						break;
-					} 
+                    if (bufSize > 0){  
+                        int rc = recv(conn_sd, &read_buffer[read_buffer_pos], bufSize, 0);
+                        if (rc < 0) {
+                            if (errno != EWOULDBLOCK) {
+                                perror("  recv() failed");
+                                is_closed = true;
+                            }
+                            break;
+                        } 
 
 
 
-					/**********************************************/
-					/* Check to see if the connection has been    */
-					/* closed by the client                       */
-					/**********************************************/
-					if (rc == 0) {
-						printf("  Connection closed\n");
-						is_closed = true;
-						return -1;         
-					}
+                        /**********************************************/
+                        /* Check to see if the connection has been    */
+                        /* closed by the client                       */
+                        /**********************************************/
+                        if (rc == 0) {
+                            printf("  Connection closed\n");
+                            is_closed = true;
+                            return -1;         
+                        }
 
-					/**********************************************/
-					/* Data was received                          */
-					/**********************************************/
-					len = rc;
-					printf("  %d bytes received\n", len);
+                        /**********************************************/
+                        /* Data was received                          */
+                        /**********************************************/
+                        len = rc;
+                    }
+				//	printf("  %d bytes received\n", len);
 					this->process_data(len);
 				}
 
@@ -203,4 +210,5 @@ class TcpConnection : public std::enable_shared_from_this<T> {
 		std::condition_variable send_cond;
 		int conn_sd = -1 ;
 		bool is_closed = false;
+    
 };
