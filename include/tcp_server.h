@@ -12,6 +12,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <vector> 
+#include <signal.h> 
 #include <string> 
 #include <arpa/inet.h>
 #include <unordered_map> 
@@ -36,6 +37,7 @@ class TcpServer{
 
             listen_addr = host; 
 			listen_sd = socket(AF_INET, SOCK_STREAM, 0);
+			signal(SIGPIPE, SIG_IGN);
 			if (listen_sd < 0)
 			{
 				perror("socket() failed");

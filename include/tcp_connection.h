@@ -32,7 +32,9 @@ class TcpConnection : public std::enable_shared_from_this<T> {
 			kWriteBufferSize = 1024 * 1024 * 8,
 			kMaxPackageLimit = 16 * 1024
 		};
-		virtual ~TcpConnection() = default;
+		virtual ~TcpConnection() {
+			
+		}
 
 		int32_t send(const char * data, uint32_t dataLen){
 			if(is_open()){
@@ -60,7 +62,10 @@ class TcpConnection : public std::enable_shared_from_this<T> {
 
 		virtual void handle_event(uint32_t evt) { }
 		bool is_open() { 
-			return   !is_closed&& ( fcntl(conn_sd, F_GETFD) != -1 || errno != EBADF) ;
+			if (conn_sd > 0){
+				return   !is_closed&& ( fcntl(conn_sd, F_GETFD) != -1 || errno != EBADF) ;
+			}
+			return false; 
 		}
 		void close() {
 
@@ -80,8 +85,9 @@ class TcpConnection : public std::enable_shared_from_this<T> {
 		void init(int fd) {
 			this->conn_sd = fd;
 			is_closed = false;
-			//recv_thread = std::thread([this]() { this->do_read(); });
-			send_thread = std::thread([this]() { this->do_write(); });
+			//read_thread = std::thread([this]() { this->do_read(); });
+			write_thread = std::thread([this]() { this->do_write(); });
+			write_thread.detach(); 
 			this->handle_event(CONNECTION_OPEN); 
 		}
 
@@ -200,8 +206,8 @@ class TcpConnection : public std::enable_shared_from_this<T> {
 		char read_buffer[kReadBufferSize];
 		int32_t read_buffer_pos = 0;
 
-		std::thread send_thread;
-		std::thread recv_thread;
+		std::thread write_thread;
+		std::thread read_thread;
 
 		LoopBuffer<> send_buffer;
 		std::mutex send_mutex;
