@@ -27,6 +27,6 @@ include_directories(include)
 
 
 #add_executable(tcpserver src/tcp_server.cpp)
-add_executable(clientdemo  src/clientdemo.cpp)
+add_executable(democlient  src/democlient.cpp)
 
 add_executable(demoserver src/demoserver.cpp)

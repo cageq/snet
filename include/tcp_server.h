@@ -86,7 +86,7 @@ class TcpServer{
     private: 
 
 		void do_accept(){
-			int    desc_ready = false ;
+			int    desc_ready =  0 ;
 			struct timeval       timeout;
 			is_running = true ; 
 			/*************************************************************/
@@ -200,6 +200,7 @@ class TcpServer{
 								auto conn = std::make_shared<Connection>(); 
 								add_connection(newSd , conn); 
 								conn->init(newSd); 
+								conn->on_ready(); 
 								this->set_nonblocking(newSd); 
 
 								FD_SET(newSd, &master_set);

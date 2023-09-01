@@ -9,18 +9,21 @@
 #include <string>
 #include <sys/socket.h>
 #include <sys/types.h>
+#include <thread>
 #include <unistd.h>
 #include <unordered_map>
 #include <vector>
-
 template <class Connection> class TcpClient {
 public:
   using ConnectionPtr = std::shared_ptr<Connection>;
 
   TcpClient() {}
 
+  void start() {
+    work_thread = std::thread([this]() { this->run(); });
+  }
   void run() {
-    int desc_ready = false;
+    int desc_ready = 0;
     struct timeval timeout;
     is_running = true;
 
@@ -29,7 +32,6 @@ public:
     do {
 
       FD_ZERO(&master_set);
-
       /*************************************************************/
       /* Initialize the timeval struct to 3 minutes.  If no        */
       /* activity after 3 minutes this program will end.           */
@@ -43,7 +45,9 @@ public:
         perror("  select() failed");
         break;
       }
+      // timeout
       if (rc == 0) {
+        this->process_timeout();
         continue;
       }
 
@@ -57,7 +61,7 @@ public:
             if (ret < 0) {
               FD_CLR(sd, &master_set);
               remove_connection(sd);
-            //   this->release(conn);
+              //   this->release(conn);
             }
           } else {
             FD_CLR(sd, &master_set);
@@ -71,42 +75,50 @@ public:
   void add_fd(int fd) { FD_SET(fd, &master_set); }
   void del_fd(int fd) { FD_CLR(fd, &master_set); }
 
+  void process_timeout() {
+
+    for (auto &item : connection_map) {
+      auto conn = item.second;
+      if (!conn->is_open()) {
+       auto fd =  conn->do_connect();
+        if (fd > 0){
+         FD_SET(fd, &master_set); 
+         }
+      }
+    }
+  }
+
   ConnectionPtr connect(const std::string &host, uint16_t port) {
     auto conn = std::make_shared<Connection>();
 
-    struct sockaddr_in servaddr;
-    memset(&servaddr, 0, sizeof(sockaddr_in));
-    int sockfd = socket(AF_INET, SOCK_STREAM, 0);
-    servaddr.sin_family = AF_INET;
-    servaddr.sin_port = htons(port);
+    // struct sockaddr_in servaddr;
+    // memset(&servaddr, 0, sizeof(sockaddr_in));
+    // servaddr.sin_family = AF_INET;
+    // servaddr.sin_port = htons(port);
 
-    if (sockfd > max_sd) {
+    int sockfd = socket(AF_INET, SOCK_STREAM, 0);
+ 
+    conn->init(sockfd, host, port, false );
+    auto fd = conn->do_connect();
+    if (fd > 0){
+        FD_SET(sockfd, &master_set); 
+    }
+       if (sockfd > max_sd) {
       max_sd = sockfd;
     }
 
-    if (inet_pton(AF_INET, host.c_str(), &servaddr.sin_addr) <= 0) {
-      printf("inet_pton error for %s\n", host.c_str());
-      return 0;
-    }
-
-    if (::connect(sockfd, (struct sockaddr *)&servaddr, sizeof(servaddr)) < 0) {
-      printf("connect error: %s(errno: %d)\n", strerror(errno), errno);
-      return 0;
-    }
-    conn->init(sockfd);
     connection_map[sockfd] = conn;
+    return conn;
   }
 
   void add_connection(int sd, ConnectionPtr conn) { connection_map[sd] = conn; }
   int32_t remove_connection(int sd) { return connection_map.erase(sd); }
 
-  ConnectionPtr find_connection(int sd) {
-
+  ConnectionPtr find_connection(int sd) { 
     auto itr = connection_map.find(sd);
     if (itr != connection_map.end()) {
       return itr->second;
-    }
-
+    } 
     return nullptr;
   }
 
@@ -114,4 +126,5 @@ public:
   fd_set master_set, working_set;
   int max_sd = 0;
   bool is_running = false;
+  std::thread work_thread;
 };

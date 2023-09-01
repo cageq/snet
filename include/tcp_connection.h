@@ -12,6 +12,7 @@
 #include <sys/socket.h>
 #include <sys/time.h>
 #include <netinet/tcp.h>
+#include <arpa/inet.h>
 #include <thread>
 #include <fcntl.h>
 #include <unistd.h>
@@ -99,8 +100,13 @@ class TcpConnection : public std::enable_shared_from_this<T> {
 
 	private: 
 
-		void init(int fd) {
-			this->conn_sd = fd;
+		void init(int fd, const std::string &host = "", uint16_t port = 0 , bool passive = true ) {
+			this->conn_sd = fd; 
+			is_passive = passive; 
+			remote_host = host; 
+			remote_port = port; 
+		}
+		void on_ready(){
 			is_closed = false;
 			this->set_tcpdelay();
 			//read_thread = std::thread([this]() { this->do_read(); });
@@ -108,7 +114,26 @@ class TcpConnection : public std::enable_shared_from_this<T> {
 			write_thread.detach(); 
 			this->handle_event(CONNECTION_OPEN); 
 		}
+		
+		int32_t do_connect( ){
+ 
+			struct sockaddr_in servaddr;
+			memset(&servaddr, 0, sizeof(sockaddr_in));		
+			servaddr.sin_family = AF_INET;
+			servaddr.sin_port = htons(remote_port); 
+		 
+			if (inet_pton(AF_INET, remote_host.c_str(), &servaddr.sin_addr) <= 0) {
+				printf("inet_pton error for %s\n", remote_host.c_str());
+				return -1;
+			}
 
+			if (::connect(conn_sd, (struct sockaddr *)&servaddr, sizeof(servaddr)) < 0) {
+				printf("connect error: %s(errno: %d)\n", strerror(errno), errno);
+				return -1;
+			}
+			this->on_ready();
+			return conn_sd; 
+		}
 
 		void do_write() {
 			do {
@@ -232,5 +257,9 @@ class TcpConnection : public std::enable_shared_from_this<T> {
 		std::condition_variable send_cond;
 		int conn_sd = -1 ;
 		bool is_closed = false;
+		uint16_t remote_port; 
+		std::string remote_host; 
+		protected:
+		bool is_passive = true ; 
     
 };
