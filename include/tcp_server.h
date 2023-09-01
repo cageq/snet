@@ -195,7 +195,7 @@ class TcpServer{
 								/* Add the new incoming connection to the     */
 								/* master read set                            */
 								/**********************************************/
-								printf("New incoming connection - %d\n", newSd);
+								printf("accept new connection - %d\n", newSd);
 
 								auto conn = std::make_shared<Connection>(); 
 								add_connection(newSd , conn); 

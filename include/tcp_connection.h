@@ -25,10 +25,13 @@ enum ConnectionEvent{
 template <class T>
 	class TcpServer; 
 template <class T>
+	class TcpClient; 
+template <class T>
 class TcpConnection : public std::enable_shared_from_this<T> {
 
 	public:
 		friend TcpServer<T> ; 
+		friend TcpClient<T> ; 
 		enum {
 			kReadBufferSize = 1024 * 1024 * 4,
 			kWriteBufferSize = 1024 * 1024 * 8,
