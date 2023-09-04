@@ -41,7 +41,11 @@ class TcpServer  : public HeapTimer<> {
 			this->set_nonblocking(listen_sd); 
 			do_bind(port, host.c_str()); 
 			do_listen(); 
-			do_accept(); 
+
+			listen_thread = std::thread([this](){
+				do_accept(); 
+			}); 
+			
 			return 0; 
 		}
 		void stop(){
@@ -325,10 +329,10 @@ class TcpServer  : public HeapTimer<> {
 		fd_set        master_set, working_set;
 		int    listen_sd, max_sd;
 		bool is_running = false; 
+
+		std::thread listen_thread; 
 		std::unordered_map<uint32_t , ConnectionPtr>  connection_map; 
         std::string listen_addr; 
         uint32_t connection_index = 1024; 
-		Factory * connection_factory = nullptr ; 
-
-		 
+		Factory * connection_factory = nullptr ;  
 }; 

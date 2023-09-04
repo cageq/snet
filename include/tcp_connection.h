@@ -69,8 +69,7 @@ class TcpConnection : public std::enable_shared_from_this<T> {
 			kWriteBufferSize = 1024 * 1024 * 8,
 			kMaxPackageLimit = 16 * 1024
 		};
-		virtual ~TcpConnection() {
-			
+		virtual ~TcpConnection() { 
 		}
 
 		int32_t send(const char * data, uint32_t dataLen){

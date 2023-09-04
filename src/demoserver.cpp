@@ -11,4 +11,11 @@ int main(int argc, char * argv[]){
     myServer.start(8888); 
 
 
+    auto tid = myServer.start_timer([](){
+
+        printf("my main timer timeout\n"); 
+        return true; 
+        }, 1000000); 
+
+    getchar(); 
 }
