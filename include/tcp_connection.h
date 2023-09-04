@@ -28,11 +28,16 @@ template <class Connection>
     class  TcpFactory{
     	public: 
 			using ConnectionPtr = std::shared_ptr<Connection>; 
-			virtual ConnectionPtr create(){
-				auto conn=  std::make_shared<Connection>(); 
-				on_create(conn); 
-				return conn; 
-			}
+		
+
+			template <class ... Args> 
+			ConnectionPtr create(Args ... args ) {
+				auto conn =  std::make_shared<Connection> (std::forward<Args>(args)...);			
+				this->on_create(conn);
+				return conn;
+			} 
+		
+
 
 			virtual void release(ConnectionPtr conn ){ 
 				on_release(conn); 
