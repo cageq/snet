@@ -46,10 +46,10 @@ template <class Connection>
     }; 
 
 
-template <class T, class Factory>
-	class TcpServer; 
-template <class T, class Factory >
-	class TcpClient; 
+//template <class T, class Factory>
+//	class TcpServer; 
+//template <class T, class Factory >
+//	class TcpClient; 
  
 
 template <class T >
