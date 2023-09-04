@@ -71,7 +71,7 @@ public:
         }
 
         if (rc > 0 ){ 
-            printf("process event %d\n", rc); 
+            // printf("process event %d\n", rc); 
             desc_ready = rc;
             for (int sd = 0; sd <= max_sd && desc_ready > 0; ++sd) {
                 if (FD_ISSET(sd, &working_set)) {
@@ -143,6 +143,7 @@ public:
     } 
     return nullptr;
   }
+
   const std::unordered_map<uint32_t, ConnectionPtr>  & get_connections(){
     return connection_map; 
   }

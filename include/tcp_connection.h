@@ -105,21 +105,17 @@ class TcpConnection : public std::enable_shared_from_this<T> {
 		virtual int32_t handle_data(char *data, uint32_t len) { return len; }
 
 		virtual void handle_event(uint32_t evt) { }
+
 		bool is_open() { 
 			if (conn_sd > 0){
 				return   !is_closed&& ( fcntl(conn_sd, F_GETFD) != -1 || errno != EBADF) ;
 			}
 			return false; 
 		}
-		void close() {
-
-			if (!is_closed ){
-				is_closed = true; 
-				if (conn_sd > 0){
-					::close(conn_sd); 
-				}        
-			}
+		void close() { 		 
+			this->do_close(); 
 		}
+
         int32_t get_id(){
             return conn_sd; 
         }
@@ -283,8 +279,12 @@ class TcpConnection : public std::enable_shared_from_this<T> {
 
 		void do_close() {
 			if (!is_closed){
-				::close(conn_sd); 
 				is_closed = true; 
+				this->handle_event(CONNECTION_CLOSE); 
+				if (conn_sd > 0){
+					::close(conn_sd); 
+					conn_sd = -1; 
+				}         
 			}			
 		}
 		char read_buffer[kReadBufferSize];
