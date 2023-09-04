@@ -49,8 +49,14 @@ class TcpServer  : public HeapTimer<> {
 			return 0; 
 		}
 		void stop(){
-			is_running = false; 
-			::close(listen_sd); 
+			if (is_running){
+				is_running = false; 
+				::close(listen_sd); 
+			}
+			
+			if (listen_thread.joinable()){
+				listen_thread.join(); 
+			}
 		}
         virtual ConnectionPtr create(){ 
             if (factory.creator){
