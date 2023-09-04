@@ -21,7 +21,7 @@ enum ConnectionEvent{
 	CONNECTION_OPEN, 
 	CONNECTION_CLOSE, 
 }; 
-
+using TimerHandler = std::function<bool()>;
 
 template <class Connection> 
     class  TcpFactory{
@@ -223,6 +223,17 @@ class TcpConnection : public std::enable_shared_from_this<T> {
 
 			} while (0);
 			return len ; 
+		}
+
+		uint64_t start_timer(const  TimerHandler &handler, uint64_t interval, bool bLoop = true)
+		{
+			return 0; 
+		}
+		bool restart_timer(uint64_t timerId , uint64_t interval = 0 ){
+			return true; 
+		}
+		void stop_timer(uint64_t timerId){
+
 		}
 
 		bool process_data(uint32_t nread) {
