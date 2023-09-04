@@ -118,7 +118,7 @@ class TcpConnection : public std::enable_shared_from_this<T> {
             return conn_sd; 
         }
 
-	private: 
+
 
 		void init(int fd, const std::string &host = "", uint16_t port = 0 , bool passive = true ) {
 			this->conn_sd = fd; 
