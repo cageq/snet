@@ -134,6 +134,9 @@ public:
     } 
     return nullptr;
   }
+  const std::unordered_map<uint32_t, ConnectionPtr>  & get_connections(){
+    return connection_map; 
+  }
 
   std::unordered_map<uint32_t, ConnectionPtr> connection_map;
   fd_set master_set, working_set;
