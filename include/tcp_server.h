@@ -24,8 +24,12 @@ class TcpServer{
 
 	public: 
 		using ConnectionPtr = std::shared_ptr<Connection>; 
-		int start(uint16_t port, const std::string & host = "0.0.0.0" , Factory * factory = nullptr ){ 
 
+		TcpServer(Factory * factory = nullptr):	connection_factory(factory)  { 
+		}
+		
+		int start(uint16_t port, const std::string & host = "0.0.0.0"  ){ 
+		
             listen_addr = host; 
 			listen_sd = socket(AF_INET, SOCK_STREAM, 0);
 			signal(SIGPIPE, SIG_IGN);
@@ -310,7 +314,7 @@ class TcpServer{
 		}
 
 
-		Factory * connection_factory = nullptr ; 
+	
 
 		fd_set        master_set, working_set;
 		int    listen_sd, max_sd;
@@ -318,4 +322,5 @@ class TcpServer{
 		std::unordered_map<uint32_t , ConnectionPtr>  connection_map; 
         std::string listen_addr; 
         uint32_t connection_index = 1024; 
+		Factory * connection_factory = nullptr ; 
 }; 

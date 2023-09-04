@@ -20,7 +20,7 @@ class TcpClient {
 public:
   using ConnectionPtr = std::shared_ptr<Connection>;
 
-  TcpClient() {
+  TcpClient(Factory * factory = nullptr) :connection_factory(factory){
     FD_ZERO(&master_set);
     FD_ZERO(&working_set); 
   }
