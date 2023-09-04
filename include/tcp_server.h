@@ -16,24 +16,15 @@
 #include <string> 
 #include <arpa/inet.h>
 #include <unordered_map> 
+#include "tcp_connection.h"
 
-template <class Connection> 
-    class  TcpFactory{
-        public: 
-        using ConnectionPtr = std::shared_ptr<Connection>; 
-        std::function<ConnectionPtr()> creator; 
 
-        std::function<void(ConnectionPtr)> releaser; 
-
-    }; 
-
-template<class Connection >
+template<class Connection ,class Factory = TcpFactory<Connection>  >
 class TcpServer{
 
-	public:
-
+	public: 
 		using ConnectionPtr = std::shared_ptr<Connection>; 
-		int start(uint16_t port, const std::string & host = "0.0.0.0"){ 
+		int start(uint16_t port, const std::string & host = "0.0.0.0" , Factory * factory = nullptr ){ 
 
             listen_addr = host; 
 			listen_sd = socket(AF_INET, SOCK_STREAM, 0);
@@ -196,8 +187,13 @@ class TcpServer{
 								/* master read set                            */
 								/**********************************************/
 								printf("accept new connection - %d\n", newSd);
-
-								auto conn = std::make_shared<Connection>(); 
+								ConnectionPtr conn; 
+								if (connection_factory != nullptr ){
+									conn = connection_factory->create(); 
+								}else {
+ 									conn = std::make_shared<Connection>(); 
+								}
+								
 								add_connection(newSd , conn); 
 								conn->init(newSd); 
 								conn->on_ready(); 
@@ -312,6 +308,9 @@ class TcpServer{
 				exit(-1);
 			} 
 		}
+
+
+		Factory * connection_factory = nullptr ; 
 
 		fd_set        master_set, working_set;
 		int    listen_sd, max_sd;

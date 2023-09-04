@@ -23,15 +23,40 @@ enum ConnectionEvent{
 }; 
 
 
-template <class T>
+template <class Connection> 
+    class  TcpFactory{
+    	public: 
+			using ConnectionPtr = std::shared_ptr<Connection>; 
+			virtual ConnectionPtr create(){
+				auto conn=  std::make_shared<Connection>(); 
+				on_create(conn); 
+				return conn; 
+			}
+
+			virtual void release(ConnectionPtr conn ){ 
+				on_release(conn); 
+			}
+ 
+			virtual void on_create(ConnectionPtr conn){}
+
+			virtual void on_release(ConnectionPtr conn){}
+
+			std::function<ConnectionPtr()> creator; 
+			std::function<void(ConnectionPtr)> releaser;  
+    }; 
+
+
+template <class T, class Factory>
 	class TcpServer; 
 template <class T>
 	class TcpClient; 
+ 
+
 template <class T>
 class TcpConnection : public std::enable_shared_from_this<T> {
 
 	public:
-		friend TcpServer<T> ; 
+		friend class TcpServer <T, TcpFactory<T>  > ; 		 
 		friend TcpClient<T> ; 
 		enum {
 			kReadBufferSize = 1024 * 1024 * 4,
@@ -260,3 +285,4 @@ class TcpConnection : public std::enable_shared_from_this<T> {
 		bool is_passive = true ; 		
     
 };
+
