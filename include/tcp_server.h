@@ -27,7 +27,7 @@ class TcpServer{
 
 		TcpServer(Factory * factory = nullptr):	connection_factory(factory)  { 
 		}
-		
+
 		int start(uint16_t port, const std::string & host = "0.0.0.0"  ){ 
 		
             listen_addr = host; 
@@ -44,6 +44,10 @@ class TcpServer{
 			do_listen(); 
 			do_accept(); 
 			return 0; 
+		}
+		void stop(){
+			is_running = false; 
+			::close(listen_sd); 
 		}
         virtual ConnectionPtr create(){ 
             if (factory.creator){
