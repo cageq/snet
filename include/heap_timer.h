@@ -130,12 +130,12 @@
 						heap_tree.pop(); 
 						if (!node->stopped ) {
 							handle_timeout(node); 
-							heap_tree.dump([this](uint32_t idx, TimerNodePtr node ){
-									printf("[%u, %u, %llu%s] ",idx, node->timer_id,  
-											std::chrono::duration_cast<std::chrono::microseconds>( node->expire_time - timer_start_point  ).count(),
-											TimeUnit<TimeScale>::short_notion  );  
-									}); 
-							printf("\n"); 
+							// heap_tree.dump([this](uint32_t idx, TimerNodePtr node ){
+							// 		printf("[%u, %u, %llu%s] ",idx, node->timer_id,  
+							// 				std::chrono::duration_cast<std::chrono::microseconds>( node->expire_time - timer_start_point  ).count(),
+							// 				TimeUnit<TimeScale>::short_notion  );  
+							// 		}); 
+							// printf("\n"); 
 						}
 						std::tie(hasTop, node)  = heap_tree.top(); 
 						cur = get_now(); 
