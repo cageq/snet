@@ -26,9 +26,10 @@ public:
     FD_ZERO(&working_set); 
   }
 
-  void start() {
+  bool start() {
     signal(SIGPIPE, SIG_IGN);
     work_thread = std::thread([this]() { this->run(); });
+    return true; 
   }
 
   void stop(){
