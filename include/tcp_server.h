@@ -228,6 +228,7 @@ class TcpServer{
 								auto ret = conn->do_read(); 
 								if (ret < 0){
 									FD_CLR(sd, &master_set);
+									conn->do_close(); 
                                     remove_connection(sd); 
                                     this->release(conn ); 
 								}

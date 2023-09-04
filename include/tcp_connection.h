@@ -50,14 +50,9 @@ class TcpConnection : public std::enable_shared_from_this<T> {
 			}
 			return -1; 
 		}	
-		void set_tcpdelay(){
-
+		void set_tcpdelay(){ 
 			int yes = 1;
-			int result = setsockopt(conn_sd,
-									IPPROTO_TCP,
-									TCP_NODELAY,
-									(char *) &yes, 
-									sizeof(int));    // 1 - on, 0 - off
+			int result = setsockopt(conn_sd, IPPROTO_TCP, TCP_NODELAY, (char *) &yes,  sizeof(int));    // 1 - on, 0 - off
 			if (result < 0){ 
 				perror("set tcp nodelay failed"); 
 			}
@@ -115,8 +110,8 @@ class TcpConnection : public std::enable_shared_from_this<T> {
 			this->handle_event(CONNECTION_OPEN); 
 		}
 		
-		int32_t do_connect( ){
- 
+		int32_t do_connect(){
+			conn_sd =  socket(AF_INET, SOCK_STREAM, 0); 
 			struct sockaddr_in servaddr;
 			memset(&servaddr, 0, sizeof(sockaddr_in));		
 			servaddr.sin_family = AF_INET;
@@ -146,18 +141,18 @@ class TcpConnection : public std::enable_shared_from_this<T> {
                         int rc = ::send(conn_sd, data, dataLen, 0);
                         if (rc < 0) {
                             perror("send() failed");
-                            is_closed = true;
+							do_close(); 
                             break;
                         }
                         send_buffer.commit(rc);
                     }
                 }			
 
-			} while (!is_closed);
+			} while (is_open());
 		}
 
 		int32_t  do_read() {
-
+		 
 			int len = 0 ;
 			/*************************************************/
 			/* Receive all incoming data on this socket      */
@@ -177,8 +172,8 @@ class TcpConnection : public std::enable_shared_from_this<T> {
 						int rc = recv(conn_sd, &read_buffer[read_buffer_pos], bufSize, 0);
 						if (rc < 0) {
 							if (errno != EWOULDBLOCK) {
-								perror("  recv() failed");
-								is_closed = true;
+								perror("  recv() failed");								
+								return -1; 
 							}
 							break;
 						} 
@@ -188,8 +183,7 @@ class TcpConnection : public std::enable_shared_from_this<T> {
 						/* closed by the client                       */
 						/**********************************************/
 						if (rc == 0) {
-							printf("  Connection closed\n");
-							is_closed = true;
+							printf("  Connection closed\n");							
 							return -1;         
 						}
 
@@ -244,7 +238,10 @@ class TcpConnection : public std::enable_shared_from_this<T> {
 		}
 
 		void do_close() {
-
+			if (!is_closed){
+				::close(conn_sd); 
+				is_closed = true; 
+			}			
 		}
 		char read_buffer[kReadBufferSize];
 		int32_t read_buffer_pos = 0;
@@ -260,6 +257,6 @@ class TcpConnection : public std::enable_shared_from_this<T> {
 		uint16_t remote_port; 
 		std::string remote_host; 
 		protected:
-		bool is_passive = true ; 
+		bool is_passive = true ; 		
     
 };
