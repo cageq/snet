@@ -52,12 +52,12 @@ template <class T, class Factory >
 	class TcpClient; 
  
 
-template <class T, class Factory = TcpFactory<T> >
+template <class T >
 class TcpConnection : public std::enable_shared_from_this<T> {
 
 	public:
-		friend class TcpServer<T, Factory > ; 		 
-		friend class TcpClient<T, Factory> ; 
+		// friend class TcpServer<T, Factory > ; 		 
+		// friend class TcpClient<T, Factory> ; 
 		enum {
 			kReadBufferSize = 1024 * 1024 * 4,
 			kWriteBufferSize = 1024 * 1024 * 8,
