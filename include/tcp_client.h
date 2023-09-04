@@ -13,7 +13,10 @@
 #include <unistd.h>
 #include <unordered_map>
 #include <vector>
-template <class Connection> class TcpClient {
+
+#include "tcp_connection.h"
+template <class Connection, class Factory = TcpFactory<Connection> > 
+class TcpClient {
 public:
   using ConnectionPtr = std::shared_ptr<Connection>;
 
@@ -99,7 +102,13 @@ public:
   }
 
   ConnectionPtr connect(const std::string &host, uint16_t port) {
-    auto conn = std::make_shared<Connection>();  
+    ConnectionPtr conn ; 
+    if (connection_factory != nullptr){
+      conn = connection_factory->create();  
+    }else {
+      conn = std::make_shared<Connection>();  
+    }
+    
     int sockfd = socket(AF_INET, SOCK_STREAM, 0); 
     conn->init(sockfd, host, port, false );
     auto fd = conn->do_connect();
@@ -129,4 +138,6 @@ public:
   int max_sd = 0;
   bool is_running = false;
   std::thread work_thread;
+
+  Factory * connection_factory = nullptr; ; 
 };
