@@ -14,10 +14,10 @@
 #include <unordered_map>
 #include <vector>
 #include <signal.h>
-
+#include "heap_timer.h"
 #include "tcp_connection.h"
 template <class Connection, class Factory = TcpFactory<Connection> > 
-class TcpClient {
+class TcpClient  : public HeapTimer<> {
 public:
   using ConnectionPtr = std::shared_ptr<Connection>;
 
@@ -38,6 +38,9 @@ public:
         work_thread.join(); 
     }
   }
+ 
+
+
   void run() {
     int desc_ready = 0;
     struct timeval timeout;
@@ -58,7 +61,11 @@ public:
         }
         // timeout
         if (rc == 0) {
-            printf("wait timeout\n"); 
+            
+            auto nextPoint = timer_loop();  
+            timeout.tv_sec = nextPoint / 1000000; 
+            timeout.tv_usec = nextPoint % 1000000; 
+            //printf("  select() timed out.%d, %d \n", timeout.tv_sec, timeout.tv_usec);
             this->process_timeout(); 
         }
 
@@ -110,7 +117,7 @@ public:
     }else {
       conn = std::make_shared<Connection>();  
     }
-    
+    conn->heap_timer = this;  
     int sockfd = socket(AF_INET, SOCK_STREAM, 0); 
     conn->init(sockfd, host, port, false );
     auto fd = conn->do_connect();
@@ -143,6 +150,6 @@ public:
   int max_sd = 0;
   bool is_running = false;
   std::thread work_thread;
-
+ 
   Factory * connection_factory = nullptr; ; 
 };

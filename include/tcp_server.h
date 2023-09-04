@@ -17,10 +17,10 @@
 #include <arpa/inet.h>
 #include <unordered_map> 
 #include "tcp_connection.h"
-
+#include "heap_timer.h"
 
 template<class Connection ,class Factory = TcpFactory<Connection>  >
-class TcpServer{
+class TcpServer  : public HeapTimer<> {
 
 	public: 
 		using ConnectionPtr = std::shared_ptr<Connection>; 
@@ -28,8 +28,7 @@ class TcpServer{
 		TcpServer(Factory * factory = nullptr):	connection_factory(factory)  { 
 		}
 
-		int start(uint16_t port, const std::string & host = "0.0.0.0"  ){ 
-		
+		int start(uint16_t port, const std::string & host = "0.0.0.0"  ){  
             listen_addr = host; 
 			listen_sd = socket(AF_INET, SOCK_STREAM, 0);
 			signal(SIGPIPE, SIG_IGN);
@@ -79,8 +78,7 @@ class TcpServer{
 			return nullptr; 
 		}
 
-        TcpFactory<Connection>  factory ; 
-
+        TcpFactory<Connection>  factory ;  
 
     private: 
 
@@ -99,8 +97,8 @@ class TcpServer{
 			/* Initialize the timeval struct to 3 minutes.  If no        */
 			/* activity after 3 minutes this program will end.           */
 			/*************************************************************/
-			timeout.tv_sec  = 3;
-			timeout.tv_usec = 0;
+			timeout.tv_sec  = 1;
+			timeout.tv_usec = 100;
 
 			/*************************************************************/
 			/* Loop waiting for incoming connects or for incoming data   */
@@ -133,7 +131,10 @@ class TcpServer{
 				/**********************************************************/
 				if (rc == 0)
 				{
-					//  printf("  select() timed out.\n");
+					auto nextPoint = timer_loop();  
+					timeout.tv_sec = nextPoint / 1000000; 
+					timeout.tv_usec = nextPoint % 1000000; 
+					//printf("  select() timed out.%d, %d \n", timeout.tv_sec, timeout.tv_usec);
 					continue;
 				}
 
@@ -201,6 +202,7 @@ class TcpServer{
 								}else {
  									conn = std::make_shared<Connection>(); 
 								}
+								conn->heap_timer = this; 
 								
 								add_connection(newSd , conn); 
 								conn->init(newSd); 
@@ -277,7 +279,7 @@ class TcpServer{
 				::close(sd);
 				exit(-1);
 			}
-		}
+		} 
 
 		void do_bind(uint16_t port , const char * ipAddr = "0.0.0.0"){
 
@@ -327,4 +329,6 @@ class TcpServer{
         std::string listen_addr; 
         uint32_t connection_index = 1024; 
 		Factory * connection_factory = nullptr ; 
+
+		 
 }; 

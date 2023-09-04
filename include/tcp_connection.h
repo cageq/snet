@@ -16,6 +16,7 @@
 #include <thread>
 #include <fcntl.h>
 #include <unistd.h>
+#include "heap_timer.h"
 enum ConnectionEvent{
 	CONNECTION_INIT, 
 	CONNECTION_OPEN, 
@@ -227,13 +228,13 @@ class TcpConnection : public std::enable_shared_from_this<T> {
 
 		uint64_t start_timer(const  TimerHandler &handler, uint64_t interval, bool bLoop = true)
 		{
-			return 0; 
+			return heap_timer->start_timer(handler, interval, bLoop); 			
 		}
 		bool restart_timer(uint64_t timerId , uint64_t interval = 0 ){
-			return true; 
+			return heap_timer->restart_timer(timerId, interval); 
 		}
 		void stop_timer(uint64_t timerId){
-
+			heap_timer->stop_timer(timerId); 
 		}
 
 		bool process_data(uint32_t nread) {
@@ -273,6 +274,8 @@ class TcpConnection : public std::enable_shared_from_this<T> {
 					});
 		}
 
+ 
+
 		void do_close() {
 			if (!is_closed){
 				::close(conn_sd); 
@@ -292,8 +295,10 @@ class TcpConnection : public std::enable_shared_from_this<T> {
 		bool is_closed = false;
 		uint16_t remote_port; 
 		std::string remote_host; 
+		HeapTimer<> * heap_timer = nullptr ; 
 		protected:
-		bool is_passive = true ; 		
-    
+		bool is_passive = true ; 		 
+
+	
 };
 
