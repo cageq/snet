@@ -28,6 +28,7 @@ public:
 
   bool start() {
     signal(SIGPIPE, SIG_IGN);
+    
     work_thread = std::thread([this]() { this->run(); });
     return true; 
   }
