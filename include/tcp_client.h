@@ -111,12 +111,13 @@ public:
     }
   }
 
-  ConnectionPtr connect(const std::string &host, uint16_t port) {
+  template <class ... Args> 
+  ConnectionPtr connect(const std::string &host, uint16_t port, Args ... args ) {
     ConnectionPtr conn ; 
     if (connection_factory != nullptr){
       conn = connection_factory->create();  
     }else {
-      conn = std::make_shared<Connection>();  
+      conn = std::make_shared<Connection>(args... );  
     }
     conn->heap_timer = this;  
     int sockfd = socket(AF_INET, SOCK_STREAM, 0); 
