@@ -115,7 +115,7 @@ public:
   ConnectionPtr connect(const std::string &host, uint16_t port, Args ... args ) {
     ConnectionPtr conn ; 
     if (connection_factory != nullptr){
-      conn = connection_factory->create();  
+      conn = connection_factory->create(args...);  
     }else {
       conn = std::make_shared<Connection>(args... );  
     }

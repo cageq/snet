@@ -37,8 +37,6 @@ template <class Connection>
 				return conn;
 			} 
 		
-
-
 			virtual void release(ConnectionPtr conn ){ 
 				on_release(conn); 
 			}
