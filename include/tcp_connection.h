@@ -33,18 +33,15 @@ template <class Connection>
 				auto conn =  std::make_shared<Connection> (std::forward<Args>(args)...);			
 				this->on_create(conn);
 				return conn;
-			}  
-
+			} 
+		
 			virtual void release(ConnectionPtr conn ){ 
 				on_release(conn); 
 			}
  
 			virtual void on_create(ConnectionPtr conn){}
 
-			virtual void on_release(ConnectionPtr conn){}
-
-			std::function<ConnectionPtr()> creator; 
-			std::function<void(ConnectionPtr)> releaser;  
+			virtual void on_release(ConnectionPtr conn){}  
     }; 
 
 
