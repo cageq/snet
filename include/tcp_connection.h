@@ -59,7 +59,7 @@ class TcpConnection : public std::enable_shared_from_this<T> {
 		// friend class TcpClient<T, Factory> ; 
 		enum {
 			kReadBufferSize = 1024 * 1024 * 4,
-			kWriteBufferSize = 1024 * 1024 * 8,
+			kWriteBufferSize = 1024 * 1024 * 4,
 			kMaxPackageLimit = 16 * 1024
 		};
 		virtual ~TcpConnection() { 
@@ -278,11 +278,12 @@ class TcpConnection : public std::enable_shared_from_this<T> {
 				}         
 			}			
 		}
+
 		char read_buffer[kReadBufferSize];
 		int32_t read_buffer_pos = 0;
 
 		std::thread write_thread;
-		std::thread read_thread;
+		//std::thread read_thread;
 
 		LoopBuffer<> send_buffer;
 		std::mutex send_mutex;
@@ -293,8 +294,6 @@ class TcpConnection : public std::enable_shared_from_this<T> {
 		std::string remote_host; 
 		HeapTimer<> * heap_timer = nullptr ; 
 		protected:
-		bool is_passive = true ; 		 
-
-	
+		bool is_passive = true ; 		  
 };
 
