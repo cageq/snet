@@ -1,7 +1,13 @@
 #pragma once
 
-#include "pipe_connection.h"
+ 
 #include "tcp_connection.h"
+//#include "pipe_connection.h"
+
+
+template <class UserSession>
+class PipeConnection; 
+
 template <class UserSession>
 class PipeFactory : public TcpFactory<PipeConnection<UserSession>> {
 public:
@@ -10,24 +16,16 @@ public:
 
   using PipeConnectionPtr = std::shared_ptr<PipeConnection<UserSession>>;
 
-  virtual void on_create(PipeConnectionPtr conn) {}
+  virtual void on_create(PipeConnectionPtr conn) {
 
-  virtual void on_release(PipeConnectionPtr conn) {}
-
-  template <class... Args>
-  UserSessionPtr add_remote_pipe(const std::string &pipeId,
-                                 const std::string &host, uint16_t port,
-                                 Args &&...args) {
-
-    pipe_map[pipeId] =
-        std::make_shared<UserSession>(std::forward<Args>(args)...);
   }
 
-  template <class... Args>
-  UserSessionPtr add_local_pipe(const std::string &pipeId, Args &&...args) {
+  virtual void on_release(PipeConnectionPtr conn) {
 
-    pipe_map[pipeId] =
-        std::make_shared<UserSession>(std::forward<Args>(args)...);
+  }
+
+  void add_session(const std::string & pipeId, UserSessionPtr session){
+    pipe_map[pipeId] = session; 
   }
 
   UserSessionPtr find_user_session(const std::string &pipeId) {

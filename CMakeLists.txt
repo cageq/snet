@@ -30,3 +30,8 @@ include_directories(include)
 add_executable(democlient  src/democlient.cpp)
 
 add_executable(demoserver src/demoserver.cpp)
+
+
+
+add_executable(pipecli src/pipecli.cpp)
+add_executable(pipesrv src/pipesrv.cpp)

@@ -58,17 +58,19 @@ class TcpServer  : public HeapTimer<> {
 				listen_thread.join(); 
 			}
 		}
+
+		
         virtual ConnectionPtr create(){ 
-            if (factory.creator){
-                return factory.creator(); 
-            }
+            // if (factory.creator){
+            //     return factory.creator(); 
+            // }
             return std::make_shared<Connection>(); 
         }
 
         virtual void release(ConnectionPtr conn ){
-            if (factory.releaser){
-                factory.releaser(conn); 
-            }
+            // if (factory.releaser){
+            //    factory.releaser(conn); 
+            //}
         }
 
         void add_connection(int sd, ConnectionPtr conn){
