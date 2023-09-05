@@ -27,17 +27,13 @@ using TimerHandler = std::function<bool()>;
 template <class Connection> 
     class  TcpFactory{
     	public: 
-			using ConnectionPtr = std::shared_ptr<Connection>; 
-		
-
+			using ConnectionPtr = std::shared_ptr<Connection>;  
 			template <class ... Args> 
 			ConnectionPtr create(Args ... args ) {
 				auto conn =  std::make_shared<Connection> (std::forward<Args>(args)...);			
 				this->on_create(conn);
 				return conn;
-			} 
-		
-
+			}  
 
 			virtual void release(ConnectionPtr conn ){ 
 				on_release(conn); 
@@ -107,7 +103,7 @@ class TcpConnection : public std::enable_shared_from_this<T> {
 
 		bool is_open() { 
 			if (conn_sd > 0){
-				return   !is_closed&& ( fcntl(conn_sd, F_GETFD) != -1 || errno != EBADF) ;
+				return !is_closed&& ( fcntl(conn_sd, F_GETFD) != -1 || errno != EBADF) ;
 			}
 			return false; 
 		}
@@ -118,15 +114,14 @@ class TcpConnection : public std::enable_shared_from_this<T> {
         int32_t get_id(){
             return conn_sd; 
         }
-
-
-
+ 
 		void init(int fd, const std::string &host = "", uint16_t port = 0 , bool passive = true ) {
 			this->conn_sd = fd; 
 			is_passive = passive; 
 			remote_host = host; 
 			remote_port = port; 
 		}
+
 		void on_ready(){
 			is_closed = false;
 			this->set_tcpdelay();

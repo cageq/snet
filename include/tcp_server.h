@@ -38,7 +38,7 @@ class TcpServer  : public HeapTimer<> {
 				exit(-1);
 			}    
 			this->set_reuse(); 
-			this->set_nonblocking(listen_sd); 
+			//this->set_nonblocking(listen_sd); 
 			do_bind(port, host.c_str()); 
 			do_listen(); 
 
@@ -217,7 +217,7 @@ class TcpServer  : public HeapTimer<> {
 								add_connection(newSd , conn); 
 								conn->init(newSd); 
 								conn->on_ready(); 
-								this->set_nonblocking(newSd); 
+								//this->set_nonblocking(newSd); 
 
 								FD_SET(newSd, &master_set);
 								if (newSd > max_sd)
