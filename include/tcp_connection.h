@@ -156,13 +156,15 @@ class TcpConnection : public std::enable_shared_from_this<T> {
                     auto [data, dataLen] = send_buffer.read();
 
                     if (dataLen > 0 && conn_sd > 0 ) {
+		 
                         int rc = ::send(conn_sd, data, dataLen, 0);
                         if (rc < 0) {
                             perror("send() failed");
 							do_close(); 
-                            break;
+                            return ; 
                         }
-                        send_buffer.commit(rc);
+
+                        send_buffer.commit(rc); 
                     }
                 }			
 

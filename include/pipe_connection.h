@@ -42,16 +42,21 @@ public:
     return sizeof(PipeMsgHead) + msg->length;
   }
 
-  virtual void handle_event(uint32_t evt)
+  virtual void handle_event(uint32_t evt) override
   {
+    printf("handle pipe connection %d\n", evt); 
     if (evt == CONNECTION_OPEN)
     {
+
+        if (!Parent::is_passive){
+            this->send_shakehand(this->user_session->pipe_id); 
+        }else {
+            
+        }
       //
-      if (!Parent::is_passive)
-      {
-        // send heartbeat
-        this->send_heartbeat();
-      }
+    
+        // // send heartbeat
+        //  this->send_heartbeat();   
     }
   }
 
@@ -68,8 +73,9 @@ public:
     this->msend(shakeMsg, pipeId);
   }
 
-  virtual int32_t handle_data(char *data, uint32_t len)
+  virtual int32_t handle_data(char *data, uint32_t len) override
   { 
+    printf("handle data length %d\n", len); 
     PipeMsgHead *msg = (PipeMsgHead *)data; 
     if (msg->type == PIPE_MSG_SHAKE_HAND)
     { 
@@ -101,6 +107,9 @@ public:
     if (msg->length > 0)
     {
       std::string pipeId = std::string((const char *)msg->body, msg->length);
+      if (user_session){
+        user_session->on_ready(); 
+      }
     }
   }
 
@@ -124,6 +133,8 @@ void   PipeConnection<UserSession>::process_server_handshake(PipeMsgHead *msg)
       {
         session->on_ready();
         session->handle_event(1);
+      }else {
+        printf("not found pipe id %s\n", pipeId.c_str()); 
       }
       this->send_shakehand(pipeId);
     }

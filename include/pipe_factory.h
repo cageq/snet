@@ -17,7 +17,7 @@ public:
   using PipeConnectionPtr = std::shared_ptr<PipeConnection<UserSession>>;
 
   virtual void on_create(PipeConnectionPtr conn) {
-
+    conn->pipe_factory = this; 
   }
 
   virtual void on_release(PipeConnectionPtr conn) {

@@ -29,6 +29,7 @@ class TcpServer  : public HeapTimer<> {
 		}
 
 		int start(uint16_t port, const std::string & host = "0.0.0.0"  ){  
+			printf("start listen port %d\n", port); 
             listen_addr = host; 
 			listen_sd = socket(AF_INET, SOCK_STREAM, 0);
 			signal(SIGPIPE, SIG_IGN);
@@ -38,7 +39,7 @@ class TcpServer  : public HeapTimer<> {
 				exit(-1);
 			}    
 			this->set_reuse(); 
-			//this->set_nonblocking(listen_sd); 
+			this->set_nonblocking(listen_sd); 
 			do_bind(port, host.c_str()); 
 			do_listen(); 
 
@@ -117,30 +118,17 @@ class TcpServer  : public HeapTimer<> {
 			/* on any of the connected sockets.                          */
 			/*************************************************************/
 			do
-			{
-				/**********************************************************/
-				/* Copy the master fd_set over to the working fd_set.     */
-				/**********************************************************/
-				memcpy(&working_set, &master_set, sizeof(master_set));
-
-				/**********************************************************/
-				/* Call select() and wait 3 minutes for it to complete.   */
-				/**********************************************************/
+			{ 
+				memcpy(&working_set, &master_set, sizeof(master_set)); 
+ 
 				// printf("Waiting on select()...\n");
-				int rc = select(max_sd + 1, &working_set, NULL, NULL, &timeout);
-
-				/**********************************************************/
-				/* Check to see if the select call failed.                */
-				/**********************************************************/
+				int rc = select(max_sd + 1, &working_set, NULL, NULL, &timeout); 
 				if (rc < 0)
 				{
-					perror("  select() failed");
+					perror("select() failed");
 					break;
 				}
-
-				/**********************************************************/
-				/* Check to see if the 3 minute time out expired.         */
-				/**********************************************************/
+ 
 				if (rc == 0)
 				{
 					auto nextPoint = timer_loop();  
@@ -239,8 +227,7 @@ class TcpServer  : public HeapTimer<> {
 						/* existing connection must be readable             */
 						/****************************************************/
 						else
-						{
-							//printf("readable sd %d\n", sd); 
+						{ 
 							auto conn = find_connection(sd); 
 							if (conn){
 								auto ret = conn->do_read(); 
@@ -259,6 +246,7 @@ class TcpServer  : public HeapTimer<> {
 				} /* End of loop through selectable descriptors */
 
 			} while (is_running ); 
+			printf("quiting ....\n"); 
 
 		}
 		/*************************************************************/

@@ -13,10 +13,10 @@ int main(int argc , char * argv[]){
 
 
     TcpPipe<UserSession> tcpPipe; 
+    tcpPipe.start("", 0, PIPE_CLIENT_MODE); 
     tcpPipe.add_remote_pipe("1", "127.0.0.1", 8888); 
 
 
-
-
+    getchar(); 
 
 }

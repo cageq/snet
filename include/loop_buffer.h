@@ -104,9 +104,7 @@ class LoopBuffer {
 
 			__MEM_BARRIER__;
 			uint32_t writePos = tail & (BufferSize - 1);
-			uint32_t tailSize = BufferSize - writePos;
-
-
+			uint32_t tailSize = BufferSize - writePos; 
 			if (dataLen > tailSize) {
 				memcpy(&buffer[writePos], data, tailSize);
 				encrypter(&buffer[writePos], tailSize);

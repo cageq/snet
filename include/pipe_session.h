@@ -28,13 +28,11 @@ public:
   }
 
   void on_ready(){
+    printf("pipe is ready %s \n", pipe_id.c_str()); 
     pipe_status = PIPE_STATUS_BIND; 
   }
  
-
  
-
-
   std::string pipe_id;
   std::vector<PipeConnectionPtr> pipe_connections;
 
