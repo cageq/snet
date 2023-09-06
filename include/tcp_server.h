@@ -62,16 +62,16 @@ class TcpServer  : public HeapTimer<> {
 
 		
         virtual ConnectionPtr create(){ 
-            // if (factory.creator){
-            //     return factory.creator(); 
-            // }
+            if (connection_factory){
+                return connection_factory->create(); 
+            }
             return std::make_shared<Connection>(); 
         }
 
         virtual void release(ConnectionPtr conn ){
-            // if (factory.releaser){
-            //    factory.releaser(conn); 
-            //}
+            if (connection_factory){
+                return connection_factory->release(conn); 
+            }
         }
 
         void add_connection(int sd, ConnectionPtr conn){
@@ -318,17 +318,13 @@ class TcpServer  : public HeapTimer<> {
 				exit(-1);
 			} 
 		}
-
-
-	
-
-		fd_set        master_set, working_set;
+ 
+		fd_set master_set, working_set;
 		int    listen_sd, max_sd;
 		bool is_running = false; 
 
 		std::thread listen_thread; 
 		std::unordered_map<uint32_t , ConnectionPtr>  connection_map; 
-        std::string listen_addr; 
-        uint32_t connection_index = 1024; 
+        std::string listen_addr;         
 		Factory * connection_factory = nullptr ;  
 }; 
