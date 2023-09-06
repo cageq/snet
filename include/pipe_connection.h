@@ -52,11 +52,7 @@ public:
             this->send_shakehand(this->user_session->pipe_id); 
         }else {
             
-        }
-      //
-    
-        // // send heartbeat
-        //  this->send_heartbeat();   
+        }  
     }
   }
 
@@ -114,8 +110,6 @@ public:
   }
 
   void process_server_handshake(PipeMsgHead *msg); 
-
-  
   UserSessionPtr user_session;
   PipeFactory<UserSession> *pipe_factory = nullptr;
 };
