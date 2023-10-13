@@ -30,10 +30,10 @@ template <class Connection>
 			virtual ~TcpFactory(){}
 			using ConnectionPtr = std::shared_ptr<Connection>;  
 			template <class ... Args> 
-			ConnectionPtr create(Args ... args ) {
+			ConnectionPtr create(Args && ... args ) {
 				ConnectionPtr conn; 
 				if (creator){
-					conn = creator(std::forward<Args>(args)...); 
+					conn = creator(); 
 				}else {
 					conn =  std::make_shared<Connection> (std::forward<Args>(args)...);			
 				}
