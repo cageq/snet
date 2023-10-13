@@ -294,8 +294,6 @@ class TcpServer  : public HeapTimer<> {
 			addr.sin_family = AF_INET;
 			addr.sin_addr.s_addr = inet_addr(ipAddr);
 			addr.sin_port = htons(port);
-
-
 			int rc = bind(listen_sd,(struct sockaddr *)&addr, sizeof(sockaddr_in));
 			if (rc < 0)
 			{
