@@ -71,7 +71,7 @@ struct NonMutex{
 	inline void unlock(){}
 }; 
 
-template <std::size_t kMaxSize = 1024*1024*4, class Mutex = NonMutex>
+template <std::size_t kMaxSize = 1024*4, class Mutex = NonMutex>
 class LoopBuffer {
 	public:
 		using DataHandler = std::function<uint32_t( char *, uint32_t)>;

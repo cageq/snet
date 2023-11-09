@@ -152,7 +152,6 @@
 				  	return 1000000;  
 				}
 			private: 
-
 				static const uint32_t base_timer_index = 1024; 
 				uint32_t add_timer(TimerNodePtr node ){
 					static uint32_t timer_index = base_timer_index ; 
@@ -162,12 +161,9 @@
 					std::lock_guard<Mutex> guard(timer_mutex); 
 					timer_nodes[node->timer_id] = node; 
 					return node->timer_id; 
-				}
-
-							 
+				} 
 
 				std::chrono::time_point<std::chrono::system_clock> timer_start_point ; 
-				
 				MinHeap<TimerNodePtr , CompareTimerNode<TimeScale> , Mutex>  heap_tree; 				
 				Mutex timer_mutex; 
 				std::unordered_map<uint32_t , TimerNodePtr>  timer_nodes ; 

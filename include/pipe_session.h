@@ -19,6 +19,7 @@ enum PipeStatus {
 template <class UserSession> 
 class PipeSession {
 public:
+    virtual ~PipeSession(){}
   using PipeConnectionPtr = PipeConnection<UserSession>; 
   virtual bool handle_event(uint32_t evt) { return true; }
 
