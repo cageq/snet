@@ -69,11 +69,21 @@ public:
 		if (is_open())
 		{
 			int ret = send_buffer.push(data, dataLen);
-			send_cond.notify_one();
+			//send_cond.notify_one();
+            notify_send(); 
 			return dataLen;
 		}
 		return -1;
 	}
+
+    void notify_send(){
+
+        if (tcp_worker){
+
+            tcp_worker->mod_event(static_cast<T*>(this), EPOLLOUT); 
+        }
+
+    }
 	void set_tcpdelay()
 	{
 		int yes = 1;
@@ -89,7 +99,8 @@ public:
 		if (is_open())
 		{
 			auto ret = send_buffer.mpush(std::forward<Args>(args)...);
-			send_cond.notify_one();
+			//send_cond.notify_one();
+            notify_send(); 
 			return ret;
 		}
 		return -1;
@@ -137,9 +148,6 @@ public:
 	{
 		is_closed = false;
 		this->set_tcpdelay();
-		// read_thread = std::thread([this]() { this->do_read(); });
-		//  write_thread = std::thread([this]() { this->do_send(); });
-		//  write_thread.detach();
 		this->handle_event(CONN_EVENT_OPEN);
 	}
 
@@ -168,13 +176,9 @@ public:
 
 	void do_send()
 	{
-		do
+        if (is_open())
 		{
-			if (send_buffer.empty())
-			{
-				wait(1);
-			}
-			else
+			if (!send_buffer.empty())
 			{
 				auto [data, dataLen] = send_buffer.read();
 
@@ -193,7 +197,7 @@ public:
 				}
 			}
 
-		} while (is_open());
+		} 
 	}
 
 	int32_t do_read()
@@ -302,9 +306,9 @@ public:
 	void wait(int msTimeOut)
 	{
 
-		std::unique_lock<std::mutex> lk(send_mutex);
-		send_cond.wait_for(lk, std::chrono::microseconds(msTimeOut), [this]
-						   { return !send_buffer.empty(); });
+		//std::unique_lock<std::mutex> lk(send_mutex);
+		//send_cond.wait_for(lk, std::chrono::microseconds(msTimeOut), [this]
+		//				   { return !send_buffer.empty(); });
 	}
 
 	void do_close()
@@ -335,7 +339,7 @@ public:
 		else if (EPOLLOUT == (evts & EPOLLOUT))
 		{
 			printf("do send \n"); 
-			//this->do_send();
+			this->do_send();
 		}
 		else if (EPOLLERR == (evts & EPOLLERR))
 		{
@@ -361,7 +365,7 @@ public:
 
 	LoopBuffer<> send_buffer;
 	std::mutex send_mutex;
-	std::condition_variable send_cond;
+	//std::condition_variable send_cond;
 	int conn_sd = -1;
 	bool is_closed = false;
 	uint16_t remote_port;

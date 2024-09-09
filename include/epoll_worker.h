@@ -42,7 +42,6 @@ public:
     bool add_event(Connection *  conn, int32_t evts = EPOLLIN | EPOLLOUT | EPOLLERR)
     {
         
-        
         struct epoll_event event{}; 
         event.data.ptr = conn;  
 
