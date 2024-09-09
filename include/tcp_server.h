@@ -248,7 +248,7 @@ private:
 					add_connection(clientFd, conn);
 					conn->tcp_worker = worker; 
 					conn->init(clientFd);
-					worker->add_event(conn);
+					worker->add_event(conn.get());
 					conn->on_ready();
 				}
 			}

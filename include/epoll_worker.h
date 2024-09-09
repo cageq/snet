@@ -39,14 +39,14 @@ public:
         });
         return 0;
     }
-    bool add_event(ConnectionPtr conn, int32_t evts = EPOLLIN | EPOLLOUT | EPOLLERR)
+    bool add_event(Connection *  conn, int32_t evts = EPOLLIN | EPOLLOUT | EPOLLERR)
     {
         
         
         struct epoll_event event{}; 
-        event.data.ptr = conn.get();  
+        event.data.ptr = conn;  
 
-        printf("put pointer %p to event  sd is %d\n", conn.get(), conn->conn_sd); 
+        printf("put pointer %p to event  sd is %d\n", conn, conn->conn_sd); 
  
         event.events = evts; 
         
@@ -61,11 +61,11 @@ public:
         return true;
     }
 
-    void mod_event(ConnectionPtr conn, int  evts = EPOLLIN | EPOLLOUT | EPOLLERR)
+    void mod_event(Connection *  conn, int  evts = EPOLLIN | EPOLLOUT | EPOLLERR)
     {
         struct epoll_event event{}; 
         event.events = evts;
-        event.data.ptr = conn.get();
+        event.data.ptr = conn ;
         int ret = epoll_ctl(epoll_fd, EPOLL_CTL_MOD, conn->conn_sd, &event);
         if (ret == -1)
         {
@@ -132,14 +132,12 @@ public:
                     continue;
                 }
                 printf("get connection %d pointer %p  \n", i,  waitEvents[i].data.ptr ); 
-                Connection *pConn = (Connection *)waitEvents[i].data.ptr;
-              
-                auto conn = std::shared_ptr<Connection>(pConn);
-     
+                Connection *conn = (Connection *)waitEvents[i].data.ptr;
+               
                 if (conn){
                     conn->process_event(waitEvents[i].events); 
 
-                    this->mod_event(conn); 
+                    this->mod_event(conn,  EPOLLIN  | EPOLLERR); 
                 }else {
                     printf("no found connection \n"); 
                 }
