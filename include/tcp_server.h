@@ -175,7 +175,7 @@ private:
 	void run()
 	{
 
-		struct epoll_event event {};
+		struct epoll_event event{};
 		event.data.fd = listen_sd;
 		event.events = EPOLLIN | EPOLLERR;
 
@@ -197,7 +197,7 @@ private:
 			int nFds = epoll_wait(listen_epoll_fd, waitEvents, MAX_WAIT_EVENT, -1);
 			if (nFds < 0)
 			{
-				printf("wait error , errno is %d", errno); // must EINTR
+				printf("wait error , errno is %d\n", errno); // must EINTR
 				continue;
 			}
 
@@ -208,11 +208,11 @@ private:
 				{
 					struct sockaddr_in cliAddr;
 					int addrlen = sizeof(cliAddr);
-					// get new fd
+	 
 					// int clientFd = accept(listen_sd, (struct sockaddr *)&cliAddr, (socklen_t*)&addrlen);
 					int clientFd = accept4(listen_sd, (struct sockaddr *)&cliAddr, (socklen_t *)&addrlen, SOCK_NONBLOCK | SOCK_CLOEXEC);
 
-					printf("get new connection ,fd is %d", clientFd);
+	 
 					if (clientFd < 0)
 					{
 						if ((errno == EAGAIN) || (errno == EWOULDBLOCK))
@@ -230,7 +230,7 @@ private:
 					set_nodelay(clientFd);
 					set_noblock(clientFd);
 
-					printf("accept new connection : %d\n", clientFd);
+					
 					ConnectionPtr conn;
 					if (connection_factory != nullptr)
 					{
@@ -241,12 +241,14 @@ private:
 						conn = std::make_shared<Connection>();
 					}
 
-					auto worker = get_worker();
-					worker->event_add(conn);
+					printf("accept new connection : %d , %p \n", clientFd ,conn.get() );
 
+					auto worker = get_worker(); 
 					conn->heap_timer = this;
 					add_connection(clientFd, conn);
+					conn->tcp_worker = worker; 
 					conn->init(clientFd);
+					worker->add_event(conn);
 					conn->on_ready();
 				}
 			}

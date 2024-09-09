@@ -45,7 +45,7 @@ public:
   virtual void handle_event(uint32_t evt) override
   {
     printf("handle pipe connection %d\n", evt); 
-    if (evt == CONNECTION_OPEN)
+    if (evt == CONN_EVENT_OPEN)
     {
 
         if (!Parent::is_passive){
