@@ -1,4 +1,4 @@
-#pragma once 
+#pragma once
 #include <functional>
 #include <memory>
 #include <stdio.h>
@@ -11,337 +11,338 @@
 #include <errno.h>
 #include <string.h>
 #include <unistd.h>
-#include <vector> 
-#include <signal.h> 
-#include <string> 
+#include <vector>
+#include <signal.h>
+#include <string>
 #include <arpa/inet.h>
-#include <unordered_map> 
+#include <unordered_map>
 #include "tcp_connection.h"
 #include "heap_timer.h"
 
-template<class Connection ,class Factory = TcpFactory<Connection>  >
-class TcpServer  : public HeapTimer<> {
+#include "epoll_worker.h"
 
-	public: 
-		using ConnectionPtr = std::shared_ptr<Connection>; 
+template <class Connection, class Factory = TcpFactory<Connection>>
+class TcpServer : public HeapTimer<>
+{
 
-		TcpServer(Factory * factory = nullptr):	connection_factory(factory)  { 
+public:
+	using ConnectionPtr = std::shared_ptr<Connection>;
+	using TcpWorker = EpollWorker<Connection>;
+	using TcpWorkerPtr = std::shared_ptr<TcpWorker>;
+
+	TcpServer(Factory *factory = nullptr, int32_t workers = 4) : connection_factory(factory)
+	{
+		for (int i = 0; i < workers; i++)
+		{
+			auto worker = std::make_shared<TcpWorker>();
+			worker->start();
+			tcp_workers.push_back(worker);
+		}
+	}
+
+	int start(uint16_t port, const std::string &host = "0.0.0.0", uint32_t acceptThrds = 1)
+	{
+
+		listen_epoll_fd = epoll_create(10);
+
+		if (-1 == listen_epoll_fd)
+		{
+			perror("create epoll error ");
+			return -1;
+		}
+		printf("start listen port %d\n", port);
+		listen_addr = host;
+
+		int ret = fcntl(listen_epoll_fd, F_SETFD, FD_CLOEXEC);
+		if (ret < 0)
+		{
+			printf("set epoll option failed");
+			return -1;
 		}
 
-		int start(uint16_t port, const std::string & host = "0.0.0.0" , uint32_t acceptThrds = 4){  
-			printf("start listen port %d\n", port); 
-            listen_addr = host; 
-			listen_sd = socket(AF_INET, SOCK_STREAM, 0);
-			signal(SIGPIPE, SIG_IGN);
-			if (listen_sd < 0)
+		listen_sd = socket(AF_INET, SOCK_STREAM, 0);
+		signal(SIGPIPE, SIG_IGN);
+		if (listen_sd < 0)
+		{
+			perror("socket() failed");
+			exit(-1);
+		}
+		set_reuse();
+		set_nonblocking(listen_sd);
+		do_bind(port, host.c_str());
+		do_listen();
+
+		is_running = true;
+
+		if (acceptThrds > 1)
+		{
+			for (uint32_t i = 0; i < acceptThrds; ++i)
 			{
-				perror("socket() failed");
-				exit(-1);
-			}    
-			this->set_reuse(); 
-			this->set_nonblocking(listen_sd); 
-			do_bind(port, host.c_str()); 
-			do_listen(); 
-
-			if (acceptThrds > 1){
-				for (uint32_t i = 0; i < acceptThrds; ++i) {
-					listen_threads.emplace_back([this](){
-						do_accept(); 
-					});   
-				}
-			}else {
-				listen_thread = std::thread([this](){
-					do_accept(); 
-				}); 
-
-			} 
-	
-			return 0; 
-		}
-
-		void stop(){
-			if (is_running){
-				is_running = false; 
-				::close(listen_sd); 
-			}
-			
-			if (listen_thread.joinable()){
-				listen_thread.join(); 
-			}
-
-			for (auto& th : listen_threads) {
-				if (th.joinable()) {
-					th.join();  // 等待线程结束
-				}
+				listen_threads.emplace_back([this]()
+											{ run(); });
 			}
 		}
-
-		
-        virtual ConnectionPtr create(){ 
-            if (connection_factory){
-                return connection_factory->create(); 
-            }
-            return std::make_shared<Connection>(); 
-        }
-
-        virtual void release(ConnectionPtr conn ){
-            if (connection_factory){
-                return connection_factory->release(conn); 
-            }
-        }
-
-        void add_connection(int sd, ConnectionPtr conn){
-			connection_map[sd] = conn; 
-		}
-		int32_t remove_connection(int sd){
-			return connection_map.erase(sd); 
+		else
+		{
+			listen_thread = std::thread([this]()
+										{ run(); });
 		}
 
-		ConnectionPtr find_connection(int sd){
-	 
-			auto itr = connection_map.find(sd); 
-			if(itr != connection_map.end()){
-				return itr->second; 
+		return 0;
+	}
+
+	void stop()
+	{
+		if (is_running)
+		{
+			is_running = false;
+			::close(listen_sd);
+		}
+
+		if (listen_thread.joinable())
+		{
+			listen_thread.join();
+		}
+
+		for (auto &th : listen_threads)
+		{
+			if (th.joinable())
+			{
+				th.join(); // 等待线程结束
+			}
+		}
+	}
+
+	virtual ConnectionPtr create()
+	{
+		if (connection_factory)
+		{
+			return connection_factory->create();
+		}
+		return std::make_shared<Connection>();
+	}
+
+	virtual void release(ConnectionPtr conn)
+	{
+		if (connection_factory)
+		{
+			return connection_factory->release(conn);
+		}
+	}
+
+	void add_connection(int sd, ConnectionPtr conn)
+	{
+		connection_map[sd] = conn;
+	}
+	int32_t remove_connection(int sd)
+	{
+		return connection_map.erase(sd);
+	}
+
+	ConnectionPtr find_connection(int sd)
+	{
+
+		auto itr = connection_map.find(sd);
+		if (itr != connection_map.end())
+		{
+			return itr->second;
+		}
+
+		return nullptr;
+	}
+
+	TcpFactory<Connection> factory;
+
+private:
+	static void set_nodelay(int sock)
+	{
+		int opts = fcntl(sock, F_GETFL, 0);
+		fcntl(sock, F_SETFL, opts | O_NONBLOCK);
+	}
+	static void set_noblock(int sock)
+	{
+		int opts = fcntl(sock, F_GETFL, 0);
+		if (opts < 0)
+		{
+			printf("fcntl(sock,GETFL)");
+			return;
+		}
+		if (fcntl(sock, F_SETFL, opts | O_NONBLOCK) < 0)
+		{
+			printf("fcntl(sock,SETFL,opts)");
+		}
+	}
+	void run()
+	{
+
+		struct epoll_event event {};
+		event.data.fd = listen_sd;
+		event.events = EPOLLIN | EPOLLERR;
+
+		// register listen fd to epoll fd
+		int ret = epoll_ctl(listen_epoll_fd, EPOLL_CTL_ADD, listen_sd, &event);
+		if (-1 == ret)
+		{
+			// trace;
+			printf("add listen fd to epoll fd failed\n");
+			throw errno;
+		}
+
+		// struct sockaddr_in addr;
+		struct epoll_event waitEvents[MAX_WAIT_EVENT] = {0};
+		while (is_running)
+		{
+			printf("listener epoll wait\n");
+			// wait untill events
+			int nFds = epoll_wait(listen_epoll_fd, waitEvents, MAX_WAIT_EVENT, -1);
+			if (nFds < 0)
+			{
+				printf("wait error , errno is %d", errno); // must EINTR
+				continue;
 			}
 
-			return nullptr; 
-		}
-
-        TcpFactory<Connection>  factory ;  
-
-    private: 
-
-		void do_accept(){
-			int    desc_ready =  0 ;
-			struct timeval       timeout;
-			is_running = true ; 
-			fd_set master_set, working_set;
-			/*************************************************************/
-			/* Initialize the master fd_set                              */
-			/*************************************************************/
-			FD_ZERO(&master_set);
-			int max_sd = listen_sd;
-			FD_SET(listen_sd, &master_set);
-
-			/*************************************************************/
-			/* Initialize the timeval struct to 3 minutes.  If no        */
-			/* activity after 3 minutes this program will end.           */
-			/*************************************************************/
-			timeout.tv_sec  = 1;
-			timeout.tv_usec = 100;
-
-			/*************************************************************/
-			/* Loop waiting for incoming connects or for incoming data   */
-			/* on any of the connected sockets.                          */
-			/*************************************************************/
-			do
-			{ 
-				memcpy(&working_set, &master_set, sizeof(master_set)); 
- 
-				// printf("Waiting on select()...\n");
-				int rc = select(max_sd + 1, &working_set, NULL, NULL, &timeout); 
-				if (rc < 0)
+			for (int i = 0; i < nFds; i++)
+			{
+				// new connection, event fd will be equal listen fd
+				if ((listen_sd == waitEvents[i].data.fd) && ((EPOLLIN == waitEvents[i].events) & EPOLLIN))
 				{
-					perror("select() failed");
-					break;
-				}
- 
-				if (rc == 0)
-				{
-					auto nextPoint = timer_loop();  
-					timeout.tv_sec = nextPoint / 1000000; 
-					timeout.tv_usec = nextPoint % 1000000; 
-					//printf("  select() timed out.%d, %d \n", timeout.tv_sec, timeout.tv_usec);
-					continue;
-				}
+					struct sockaddr_in cliAddr;
+					int addrlen = sizeof(cliAddr);
+					// get new fd
+					// int clientFd = accept(listen_sd, (struct sockaddr *)&cliAddr, (socklen_t*)&addrlen);
+					int clientFd = accept4(listen_sd, (struct sockaddr *)&cliAddr, (socklen_t *)&addrlen, SOCK_NONBLOCK | SOCK_CLOEXEC);
 
-				/**********************************************************/
-				/* One or more descriptors are readable.  Need to         */
-				/* determine which ones they are.                         */
-				/**********************************************************/
-				desc_ready = rc;
-				for (int sd =0; sd <= max_sd  &&  desc_ready > 0; ++sd)
-				{
-					/*******************************************************/
-					/* Check to see if this descriptor is ready            */
-					/*******************************************************/
-					if (FD_ISSET(sd, &working_set))
+					printf("get new connection ,fd is %d", clientFd);
+					if (clientFd < 0)
 					{
-						/****************************************************/
-						/* A descriptor was found that was readable - one   */
-						/* less has to be looked for.  This is being done   */
-						/* so that we can stop looking at the working set   */
-						/* once we have found all of the descriptors that   */
-						/* were ready.                                      */
-						/****************************************************/
-						desc_ready -= 1;
-
-						/****************************************************/
-						/* Check to see if this is the listening socket     */
-						/****************************************************/
-						if (sd == listen_sd)
+						if ((errno == EAGAIN) || (errno == EWOULDBLOCK))
 						{
-							printf("Listening socket is readable\n");
-							/*************************************************/
-							/* Accept all incoming connections that are      */
-							/* queued up on the listening socket before we   */
-							/* loop back and call select again.              */
-							/*************************************************/
-							int newSd = -1; 
-							do
-							{
-								/**********************************************/
-								/* Accept each incoming connection.  If       */
-								/* accept fails with EWOULDBLOCK, then we     */
-								/* have accepted all of them.  Any other      */
-								/* failure on accept will cause us to end the */
-								/* server.                                    */
-								/**********************************************/
-								newSd = accept(listen_sd, NULL, NULL);
-								if (newSd < 0)
-								{
-									if (errno != EWOULDBLOCK)
-									{
-										perror("accept() failed");
-										is_running = false; 
-									}
-									break;
-								}
-
-								/**********************************************/
-								/* Add the new incoming connection to the     */
-								/* master read set                            */
-								/**********************************************/
-								printf("accept new connection : %d\n", newSd);
-								ConnectionPtr conn; 
-								if (connection_factory != nullptr ){
-									conn = connection_factory->create(); 
-								}else {
- 									conn = std::make_shared<Connection>(); 
-								}
-								conn->heap_timer = this; 
-								
-								add_connection(newSd , conn); 
-								conn->init(newSd); 
-								conn->on_ready(); 
-								//this->set_nonblocking(newSd); 
-
-								FD_SET(newSd, &master_set);
-								if (newSd > max_sd)
-								{
-									max_sd = newSd;
-								}
-
-								/**********************************************/
-								/* Loop back up and accept another incoming   */
-								/* connection                                 */
-								/**********************************************/
-							} while (newSd != -1);
+							// non-blocking  mode has no connection
+							continue;
 						}
-
-						/****************************************************/
-						/* This is not the listening socket, therefore an   */
-						/* existing connection must be readable             */
-						/****************************************************/
 						else
-						{ 
-							auto conn = find_connection(sd); 
-							if (conn){
-								auto ret = conn->do_read(); 
-								if (ret < 0){
-									FD_CLR(sd, &master_set);
-									conn->do_close(); 
-                                    remove_connection(sd); 
-                                    this->release(conn ); 
-								}
-							}else {
-                                FD_CLR(sd, &master_set);
-                            }
+						{
+							printf("accept failed, errno %d ", errno);
+							return;
+						}
+					}
 
-						} /* End of existing connection is readable */
-					} /* End of if (FD_ISSET(i, &working_set)) */
-				} /* End of loop through selectable descriptors */
+					set_nodelay(clientFd);
+					set_noblock(clientFd);
 
-			} while (is_running ); 
-			printf("quiting ....\n"); 
+					printf("accept new connection : %d\n", clientFd);
+					ConnectionPtr conn;
+					if (connection_factory != nullptr)
+					{
+						conn = connection_factory->create();
+					}
+					else
+					{
+						conn = std::make_shared<Connection>();
+					}
 
+					auto worker = get_worker();
+					worker->event_add(conn);
+
+					conn->heap_timer = this;
+					add_connection(clientFd, conn);
+					conn->init(clientFd);
+					conn->on_ready();
+				}
+			}
 		}
+
+		printf("quiting listen thread ");
+	}
+
+	/*************************************************************/
+	/* Allow socket descriptor to be reuseable                   */
+	/*************************************************************/
+	void set_reuse()
+	{
+		int on = 1;
+		int rc = setsockopt(listen_sd, SOL_SOCKET, SO_REUSEADDR,
+							(char *)&on, sizeof(on));
+		if (rc < 0)
+		{
+			perror("setsockopt() failed");
+			::close(listen_sd);
+			exit(-1);
+		}
+	}
+
+	void set_nonblocking(int sd)
+	{
+
 		/*************************************************************/
-		/* Allow socket descriptor to be reuseable                   */
+		/* Set socket to be nonblocking. All of the sockets for      */
+		/* the incoming connections will also be nonblocking since   */
+		/* they will inherit that state from the listening socket.   */
 		/*************************************************************/
-		void set_reuse(){
-			int on = 1; 
-			int rc = setsockopt(listen_sd, SOL_SOCKET,  SO_REUSEADDR,
-					(char *)&on, sizeof(on));
-			if (rc < 0)
-			{
-				perror("setsockopt() failed");
-				::close(listen_sd);
-				exit(-1);
-			}
+		int on = 1;
+		int rc = ioctl(sd, FIONBIO, (char *)&on);
+		if (rc < 0)
+		{
+			perror("ioctl() failed");
+			::close(sd);
+			exit(-1);
 		}
+	}
 
-		void set_nonblocking(int sd ){
+	void do_bind(uint16_t port, const char *ipAddr = "0.0.0.0")
+	{
 
-			/*************************************************************/
-			/* Set socket to be nonblocking. All of the sockets for      */
-			/* the incoming connections will also be nonblocking since   */
-			/* they will inherit that state from the listening socket.   */
-			/*************************************************************/
-			int on = 1; 
-			int rc = ioctl(sd, FIONBIO, (char *)&on);
-			if (rc < 0)
-			{
-				perror("ioctl() failed");
-				::close(sd);
-				exit(-1);
-			}
-		} 
+		// struct sockaddr_in6   addr;
+		// memset(&addr, 0, sizeof(addr));
+		// addr.sin6_family      = AF_INET6;
+		// memcpy(&addr.sin6_addr, &in6addr_any, sizeof(in6addr_any));
+		// addr.sin6_port        = htons(port);
 
-		void do_bind(uint16_t port , const char * ipAddr = "0.0.0.0"){
-
-			// struct sockaddr_in6   addr; 
-			// memset(&addr, 0, sizeof(addr));
-			// addr.sin6_family      = AF_INET6; 
-			// memcpy(&addr.sin6_addr, &in6addr_any, sizeof(in6addr_any));
-			// addr.sin6_port        = htons(port);
-
-			struct sockaddr_in addr;
-			memset(&addr, 0, sizeof(addr));
-			addr.sin_family = AF_INET;
-			addr.sin_addr.s_addr = inet_addr(ipAddr);
-			addr.sin_port = htons(port);
-			int rc = bind(listen_sd,(struct sockaddr *)&addr, sizeof(sockaddr_in));
-			if (rc < 0)
-			{
-				perror("bind() failed");
-				::close(listen_sd);
-				exit(-1);
-			}
+		struct sockaddr_in addr;
+		memset(&addr, 0, sizeof(addr));
+		addr.sin_family = AF_INET;
+		addr.sin_addr.s_addr = inet_addr(ipAddr);
+		addr.sin_port = htons(port);
+		int rc = bind(listen_sd, (struct sockaddr *)&addr, sizeof(sockaddr_in));
+		if (rc < 0)
+		{
+			perror("bind() failed");
+			::close(listen_sd);
+			exit(-1);
 		}
+	}
 
-
-		void do_listen(){
-			/*************************************************************/
-			/* Set the listen back log                                   */
-			/*************************************************************/
-			int rc = listen(listen_sd, 32);
-			if (rc < 0)
-			{
-				perror("listen() failed");
-				::close(listen_sd);
-				exit(-1);
-			} 
+	void do_listen()
+	{
+		/*************************************************************/
+		/* Set the listen back log                                   */
+		/*************************************************************/
+		int rc = listen(listen_sd, 32);
+		if (rc < 0)
+		{
+			perror("listen() failed");
+			::close(listen_sd);
+			exit(-1);
 		}
- 
+	}
 
-		int  listen_sd;
-		bool is_running = false; 
+	TcpWorkerPtr get_worker()
+	{
+		worker_index = (worker_index + 1) % tcp_workers.size();
+		return tcp_workers[worker_index];
+	}
 
+	uint32_t worker_index = 0;
+	int listen_epoll_fd = -1;
 
-		std::vector<std::thread> listen_threads;
-		std::thread listen_thread; 
-		std::unordered_map<uint32_t , ConnectionPtr>  connection_map; 
-        std::string listen_addr;         
-		Factory * connection_factory = nullptr ;  
-}; 
+	int listen_sd = -1;
+	bool is_running = false;
+
+	std::vector<std::thread> listen_threads;
+	std::thread listen_thread;
+	std::unordered_map<uint32_t, ConnectionPtr> connection_map;
+	std::string listen_addr;
+	Factory *connection_factory = nullptr;
+
+	std::vector<TcpWorkerPtr> tcp_workers;
+};

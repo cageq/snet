@@ -16,12 +16,15 @@
 #include <thread>
 #include <fcntl.h>
 #include <unistd.h>
+#include <sys/epoll.h>
 #include "heap_timer.h"
 enum ConnectionEvent{
 	CONNECTION_INIT, 
 	CONNECTION_OPEN, 
 	CONNECTION_CLOSE, 
 }; 
+
+#define MAX_WAIT_EVENT 128 
 using TimerHandler = std::function<bool()>;
 
 template <class Connection> 
@@ -57,17 +60,17 @@ template <class Connection>
 			std::function<void(ConnectionPtr ) > releaser; 
     }; 
 
-
-//template <class T, class Factory>
-//	class TcpServer; 
-//template <class T, class Factory >
-//	class TcpClient; 
  
 
 template <class T >
 class TcpConnection : public std::enable_shared_from_this<T> {
 
 	public:
+		TcpConnection(){
+			memset(&event, 0, sizeof(struct epoll_event )); 
+			event.data.ptr = this; 
+		}
+		struct epoll_event event; 
 		// friend class TcpServer<T, Factory > ; 		 
 		// friend class TcpClient<T, Factory> ; 
 		enum {
@@ -136,8 +139,8 @@ class TcpConnection : public std::enable_shared_from_this<T> {
 			is_closed = false;
 			this->set_tcpdelay();
 			//read_thread = std::thread([this]() { this->do_read(); });
-			write_thread = std::thread([this]() { this->do_write(); });
-			write_thread.detach(); 
+			// write_thread = std::thread([this]() { this->do_send(); });
+			// write_thread.detach(); 
 			this->handle_event(CONNECTION_OPEN); 
 		}
 		
@@ -161,7 +164,7 @@ class TcpConnection : public std::enable_shared_from_this<T> {
 			return conn_sd; 
 		}
 
-		void do_write() {
+		void do_send() {
 			do {
                 if (send_buffer.empty()){
                     wait(1); 
