@@ -71,8 +71,8 @@ class TcpConnection : public std::enable_shared_from_this<T> {
 		// friend class TcpServer<T, Factory > ; 		 
 		// friend class TcpClient<T, Factory> ; 
 		enum {
-			kReadBufferSize = 1024 * 1024 * 4,
-			kWriteBufferSize = 1024 * 1024 * 4,
+			kReadBufferSize = 1024 * 1024 * 8,
+			kWriteBufferSize = 1024 * 1024 * 8,
 			kMaxPackageLimit = 16 * 1024
 		};
 		virtual ~TcpConnection() { 
