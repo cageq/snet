@@ -13,7 +13,7 @@ int main(int argc, char * argv[]){
 
     auto tid = myServer.start_timer([](){
 
-        printf("my main timer timeout\n"); 
+//        printf("my main timer timeout\n"); 
         return true; 
         }, 1000000); 
 

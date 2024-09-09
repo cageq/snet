@@ -28,7 +28,7 @@ class TcpServer  : public HeapTimer<> {
 		TcpServer(Factory * factory = nullptr):	connection_factory(factory)  { 
 		}
 
-		int start(uint16_t port, const std::string & host = "0.0.0.0"  ){  
+		int start(uint16_t port, const std::string & host = "0.0.0.0" , uint32_t acceptThrds = 4){  
 			printf("start listen port %d\n", port); 
             listen_addr = host; 
 			listen_sd = socket(AF_INET, SOCK_STREAM, 0);
@@ -43,12 +43,22 @@ class TcpServer  : public HeapTimer<> {
 			do_bind(port, host.c_str()); 
 			do_listen(); 
 
-			listen_thread = std::thread([this](){
-				do_accept(); 
-			}); 
-			
+			if (acceptThrds > 1){
+				for (uint32_t i = 0; i < acceptThrds; ++i) {
+					listen_threads.emplace_back([this](){
+						do_accept(); 
+					});   
+				}
+			}else {
+				listen_thread = std::thread([this](){
+					do_accept(); 
+				}); 
+
+			} 
+	
 			return 0; 
 		}
+
 		void stop(){
 			if (is_running){
 				is_running = false; 
@@ -57,6 +67,12 @@ class TcpServer  : public HeapTimer<> {
 			
 			if (listen_thread.joinable()){
 				listen_thread.join(); 
+			}
+
+			for (auto& th : listen_threads) {
+				if (th.joinable()) {
+					th.join();  // 等待线程结束
+				}
 			}
 		}
 
@@ -99,11 +115,12 @@ class TcpServer  : public HeapTimer<> {
 			int    desc_ready =  0 ;
 			struct timeval       timeout;
 			is_running = true ; 
+			fd_set master_set, working_set;
 			/*************************************************************/
 			/* Initialize the master fd_set                              */
 			/*************************************************************/
 			FD_ZERO(&master_set);
-			max_sd = listen_sd;
+			int max_sd = listen_sd;
 			FD_SET(listen_sd, &master_set);
 
 			/*************************************************************/
@@ -317,10 +334,12 @@ class TcpServer  : public HeapTimer<> {
 			} 
 		}
  
-		fd_set master_set, working_set;
-		int    listen_sd, max_sd;
+
+		int  listen_sd;
 		bool is_running = false; 
 
+
+		std::vector<std::thread> listen_threads;
 		std::thread listen_thread; 
 		std::unordered_map<uint32_t , ConnectionPtr>  connection_map; 
         std::string listen_addr;         
