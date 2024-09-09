@@ -195,7 +195,7 @@ class TcpServer  : public HeapTimer<> {
 								/* Add the new incoming connection to the     */
 								/* master read set                            */
 								/**********************************************/
-								printf("accept new connection - %d\n", newSd);
+								printf("accept new connection : %d\n", newSd);
 								ConnectionPtr conn; 
 								if (connection_factory != nullptr ){
 									conn = connection_factory->create(); 
