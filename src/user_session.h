@@ -15,7 +15,7 @@ public:
 
     printf("recv msg %s\n", data);
 
-    if (is_passive)
+    //if (is_passive)
     {
       return send(data, len);
     }

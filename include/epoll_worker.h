@@ -39,8 +39,13 @@ public:
         });
         return 0;
     }
-    bool add_event(Connection *  conn, int32_t evts = EPOLLIN | EPOLLOUT | EPOLLERR)
+    bool add_event(Connection *  conn, int32_t evts = EPOLLET| EPOLLIN | EPOLLOUT | EPOLLERR)
     {
+        
+        if (conn->conn_sd <0){
+
+            return false;
+        }
         
         struct epoll_event event{}; 
         event.data.ptr = conn;  
@@ -60,8 +65,12 @@ public:
         return true;
     }
 
-    void mod_event(Connection *  conn, int  evts = EPOLLIN | EPOLLOUT | EPOLLERR)
+    void mod_event(Connection *  conn, int  evts = EPOLLET| EPOLLIN | EPOLLOUT | EPOLLERR)
     {
+        if (conn->conn_sd <0){
+
+            return ;
+        }
         struct epoll_event event{}; 
         event.events = evts;
         event.data.ptr = conn ;
@@ -72,7 +81,29 @@ public:
         }
         else
         {
+            printf("mod epoll event success\n"); 
         }
+    }
+
+    void del_event(Connection * conn, int evts = EPOLLIN| EPOLLOUT| EPOLLERR){
+        if (conn->conn_sd <0){
+
+            return ;
+        }
+
+        struct epoll_event event{}; 
+        event.events = evts;
+        event.data.ptr = conn ;
+        int ret = epoll_ctl(epoll_fd, EPOLL_CTL_DEL, conn->conn_sd, &event);
+        if (ret == -1)
+        {
+            printf("del epoll event error");
+        }
+        else
+        {
+            printf("del epoll event success\n"); 
+        }
+
     }
 
     void add_timer(bool mod = false)
@@ -130,13 +161,12 @@ public:
                     add_timer(true); 
                     continue;
                 }
-                printf("get connection %d pointer %p  \n", i,  waitEvents[i].data.ptr ); 
+                printf("get connection %d \n", i); 
                 Connection *conn = (Connection *)waitEvents[i].data.ptr;
                
                 if (conn){
                     conn->process_event(waitEvents[i].events); 
-
-                    this->mod_event(conn,  EPOLLIN  | EPOLLERR); 
+                    //this->mod_event(conn,  EPOLLIN  | EPOLLERR); 
                 }else {
                     printf("no found connection \n"); 
                 }

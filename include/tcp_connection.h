@@ -68,6 +68,7 @@ public:
 	{
 		if (is_open())
 		{
+            printf("start send %d\n", dataLen); 
 			int ret = send_buffer.push(data, dataLen);
 			//send_cond.notify_one();
             notify_send(); 
@@ -80,7 +81,7 @@ public:
 
         if (tcp_worker){
 
-            tcp_worker->mod_event(static_cast<T*>(this), EPOLLOUT); 
+            tcp_worker->mod_event(static_cast<T*>(this)); 
         }
 
     }
@@ -184,6 +185,7 @@ public:
 
 				if (dataLen > 0 && conn_sd > 0)
 				{
+                    printf("real send %d\n", dataLen); 
 
 					int rc = ::send(conn_sd, data, dataLen, 0);
 					if (rc < 0)
@@ -317,44 +319,51 @@ public:
 		{
 			is_closed = true;
 			this->handle_event(CONN_EVENT_CLOSE);
-			if (conn_sd > 0)
-			{
-				::close(conn_sd);
-				conn_sd = -1;
-			}
-		}
+			
+            if (tcp_worker){
+
+                tcp_worker->del_event(static_cast<T*>(this) );
+
+            }
+            if (conn_sd > 0)
+            {
+                ::close(conn_sd);
+                conn_sd = -1;
+            }
+        }
 	}
 	void process_event(int32_t evts){
 
 		if (status == ConnStatus::CONN_IDLE){
 			status = ConnStatus::CONN_OPEN; 
 			this->handle_event(CONN_EVENT_OPEN); 
+            this->on_ready(); 
 		}
 	
 		if (EPOLLIN == (evts & EPOLLIN))
 		{
 			printf("do read \n"); 
-			this->do_read();
+			int ret = this->do_read();
+            if (ret > 0)
+            {
+                tcp_worker->mod_event(static_cast<T*>(this)); 
+            }
 		}
-		else if (EPOLLOUT == (evts & EPOLLOUT))
+		
+        if (EPOLLOUT == (evts & EPOLLOUT))
 		{
 			printf("do send \n"); 
 			this->do_send();
 		}
-		else if (EPOLLERR == (evts & EPOLLERR))
+		
+        if (EPOLLERR == (evts & EPOLLERR))
 		{
 			 printf("EPOLLERROR event %d ", evts);
 			// connections.remove(conn);
 			// this->close_connection(conn);
 			this->do_close();
 		}
-		else
-		{
-			printf("epoll other event  %d ", evts);
-			// connections.remove(conn);
-			// this->close_connection(conn);
-			this->do_close();
-		}
+		
 	} 
 
 	char read_buffer[kReadBufferSize];
