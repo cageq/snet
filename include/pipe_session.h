@@ -36,7 +36,6 @@ public:
  
   std::string pipe_id;
   std::vector<PipeConnectionPtr> pipe_connections;
-
   PipeStatus pipe_status;
 };
  
