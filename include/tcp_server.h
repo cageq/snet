@@ -240,14 +240,18 @@ private:
 					{
 						conn = std::make_shared<Connection>();
 					}
-
-					printf("accept new connection : %d , %p \n", clientFd ,conn.get() );
-
+ 
 					auto worker = get_worker(); 
-					conn->heap_timer = this;
+ 
 					add_connection(clientFd, conn);
 					conn->tcp_worker = worker; 
-					conn->init(clientFd);
+ 
+					char remoteHost[INET_ADDRSTRLEN] ={};
+    				inet_ntop(AF_INET, &cliAddr.sin_addr, remoteHost, sizeof(remoteHost));
+					int32_t remotePort = ntohs(cliAddr.sin_port);
+
+					printf("accept new connection from %s:%u\n", remoteHost, remotePort);
+					conn->init(clientFd, remoteHost, remotePort, true );
 					worker->add_event(conn.get());
 					conn->on_ready();
 				}

@@ -43,17 +43,12 @@ public:
     {
         
         if (conn->conn_sd <0){
-
             return false;
         }
         
         struct epoll_event event{}; 
         event.data.ptr = conn;  
-
-        printf("put pointer %p to event  sd is %d\n", conn, conn->conn_sd); 
- 
         event.events = evts; 
-        
         int ret = epoll_ctl(epoll_fd, EPOLL_CTL_ADD, conn->conn_sd, &event);
         if (ret != 0)
         {

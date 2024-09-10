@@ -17,7 +17,7 @@
 #include <fcntl.h>
 #include <unistd.h>
 #include <sys/epoll.h>
-#include "heap_timer.h"
+ 
 #include "epoll_worker.h"
 #include "tcp_factory.h"
 
@@ -30,8 +30,10 @@ enum ConnStatus
 };
 
 enum ConnEvent{
-	CONN_EVENT_INIT, 
+	CONN_EVENT_INIT,	
 	CONN_EVENT_OPEN,  
+	CONN_EVENT_SEND,
+	CONN_EVENT_RECV,
 	CONN_EVENT_CLOSE
 }; 
 
@@ -46,20 +48,15 @@ public:
 	using TcpWorker = EpollWorker<T>;
 	using TcpWorkerPtr = std::shared_ptr<TcpWorker>;
 
-	TcpConnection()
-	{
-		memset(&event, 0, sizeof(struct epoll_event));
-		event.data.ptr = this;
-	}
-	struct epoll_event event;
-	// friend class TcpServer<T, Factory > ;
-	// friend class TcpClient<T, Factory> ;
+	TcpConnection()= default; 
+ 
 	enum
 	{
-		kReadBufferSize = 1024 * 1024 * 8,
+		kReadBufferSize  = 1024 * 1024 * 8,
 		kWriteBufferSize = 1024 * 1024 * 8,
 		kMaxPackageLimit = 16 * 1024
 	};
+
 	virtual ~TcpConnection()
 	{
 	}
@@ -70,7 +67,7 @@ public:
 		{
             printf("start send %d\n", dataLen); 
 			int ret = send_buffer.push(data, dataLen);
-			//send_cond.notify_one();
+		 
             notify_send(); 
 			return dataLen;
 		}
@@ -100,7 +97,7 @@ public:
 		if (is_open())
 		{
 			auto ret = send_buffer.mpush(std::forward<Args>(args)...);
-			//send_cond.notify_one();
+ 
             notify_send(); 
 			return ret;
 		}
@@ -120,7 +117,7 @@ public:
 	{
 		if (conn_sd > 0)
 		{
-			return !is_closed && (fcntl(conn_sd, F_GETFD) != -1 || errno != EBADF);
+			return (status == CONN_OPEN) && (fcntl(conn_sd, F_GETFD) != -1 || errno != EBADF);
 		}
 		return false;
 	}
@@ -136,25 +133,22 @@ public:
 
 	void init(int fd, const std::string &host = "", uint16_t port = 0, bool passive = true)
 	{
-
 		this->conn_sd = fd;
-		event.data.fd = fd;
+ 
 		is_passive = passive;
-
 		remote_host = host;
 		remote_port = port;
 	}
 
 	void on_ready()
-	{
-		is_closed = false;
+	{ 
 		this->set_tcpdelay();
 		this->handle_event(CONN_EVENT_OPEN);
 	}
 
 	int32_t do_connect()
 	{
-		conn_sd = socket(AF_INET, SOCK_STREAM, 0);
+		//conn_sd = socket(AF_INET, SOCK_STREAM, 0);
 		struct sockaddr_in servaddr;
 		memset(&servaddr, 0, sizeof(sockaddr_in));
 		servaddr.sin_family = AF_INET;
@@ -260,15 +254,15 @@ public:
 
 	uint64_t start_timer(const TimerHandler &handler, uint64_t interval, bool bLoop = true)
 	{
-		return heap_timer->start_timer(handler, interval, bLoop);
+		return tcp_worker->start_timer(handler, interval, bLoop);
 	}
 	bool restart_timer(uint64_t timerId, uint64_t interval = 0)
 	{
-		return heap_timer->restart_timer(timerId, interval);
+		return tcp_worker->restart_timer(timerId, interval);
 	}
 	void stop_timer(uint64_t timerId)
 	{
-		heap_timer->stop_timer(timerId);
+		tcp_worker->stop_timer(timerId);
 	}
 
 	bool process_data(uint32_t nread)
@@ -304,26 +298,18 @@ public:
 		read_buffer_pos -= readPos;
 		return true;
 	}
-
-	void wait(int msTimeOut)
-	{
-
-		//std::unique_lock<std::mutex> lk(send_mutex);
-		//send_cond.wait_for(lk, std::chrono::microseconds(msTimeOut), [this]
-		//				   { return !send_buffer.empty(); });
-	}
+ 
 
 	void do_close()
 	{
-		if (!is_closed)
+		if (status < ConnStatus::CONN_CLOSING)
 		{
-			is_closed = true;
+			status = ConnStatus::CONN_CLOSING; 
+ 
 			this->handle_event(CONN_EVENT_CLOSE);
 			
-            if (tcp_worker){
-
-                tcp_worker->del_event(static_cast<T*>(this) );
-
+            if (tcp_worker){ 
+                tcp_worker->del_event(static_cast<T*>(this) ); 
             }
             if (conn_sd > 0)
             {
@@ -332,6 +318,7 @@ public:
             }
         }
 	}
+
 	void process_event(int32_t evts){
 
 		if (status == ConnStatus::CONN_IDLE){
@@ -342,7 +329,6 @@ public:
 	
 		if (EPOLLIN == (evts & EPOLLIN))
 		{
-			printf("do read \n"); 
 			int ret = this->do_read();
             if (ret > 0)
             {
@@ -351,16 +337,14 @@ public:
 		}
 		
         if (EPOLLOUT == (evts & EPOLLOUT))
-		{
-			printf("do send \n"); 
+		{ 
 			this->do_send();
 		}
 		
         if (EPOLLERR == (evts & EPOLLERR))
 		{
 			 printf("EPOLLERROR event %d ", evts);
-			// connections.remove(conn);
-			// this->close_connection(conn);
+	 
 			this->do_close();
 		}
 		
@@ -376,13 +360,12 @@ public:
 	std::mutex send_mutex;
 	//std::condition_variable send_cond;
 	int conn_sd = -1;
-	bool is_closed = false;
+ 
 	uint16_t remote_port;
 	std::string remote_host;
-	HeapTimer<> *heap_timer = nullptr;
-
+	 
+ 
 	ConnStatus status = ConnStatus::CONN_IDLE; 
-
 	TcpWorkerPtr tcp_worker;
 
 protected:
