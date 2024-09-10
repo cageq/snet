@@ -159,6 +159,7 @@ private:
 		int opts = fcntl(sock, F_GETFL, 0);
 		fcntl(sock, F_SETFL, opts | O_NONBLOCK);
 	}
+	
 	static void set_noblock(int sock)
 	{
 		int opts = fcntl(sock, F_GETFL, 0);
@@ -172,9 +173,9 @@ private:
 			printf("fcntl(sock,SETFL,opts)");
 		}
 	}
+
 	void run()
 	{
-
 		struct epoll_event event{};
 		event.data.fd = listen_sd;
 		event.events = EPOLLIN | EPOLLERR;

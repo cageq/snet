@@ -17,28 +17,28 @@
 #include <fcntl.h>
 #include <unistd.h>
 #include <sys/epoll.h>
- 
+
 #include "epoll_worker.h"
 #include "tcp_factory.h"
 
 enum ConnStatus
 {
-	CONN_IDLE,  
+	CONN_IDLE,
 	CONN_OPEN,
 	CONN_CLOSING,
 	CONN_CLOSED,
 };
 
-enum ConnEvent{
-	CONN_EVENT_INIT,	
-	CONN_EVENT_OPEN,  
+enum ConnEvent
+{
+	CONN_EVENT_INIT,
+	CONN_EVENT_OPEN,
 	CONN_EVENT_SEND,
 	CONN_EVENT_RECV,
 	CONN_EVENT_CLOSE
-}; 
+};
 
 using TimerHandler = std::function<bool()>;
- 
 
 template <class T>
 class TcpConnection : public std::enable_shared_from_this<T>
@@ -48,11 +48,11 @@ public:
 	using TcpWorker = EpollWorker<T>;
 	using TcpWorkerPtr = std::shared_ptr<TcpWorker>;
 
-	TcpConnection()= default; 
- 
+	TcpConnection() = default;
+
 	enum
 	{
-		kReadBufferSize  = 1024 * 1024 * 8,
+		kReadBufferSize = 1024 * 1024 * 8,
 		kWriteBufferSize = 1024 * 1024 * 8,
 		kMaxPackageLimit = 16 * 1024
 	};
@@ -65,23 +65,21 @@ public:
 	{
 		if (is_open())
 		{
-            printf("start send %d\n", dataLen); 
 			int ret = send_buffer.push(data, dataLen);
-		 
-            notify_send(); 
+			notify_send();
 			return dataLen;
 		}
 		return -1;
 	}
 
-    void notify_send(){
+	void notify_send()
+	{
+		if (tcp_worker)
+		{
+			tcp_worker->mod_event(static_cast<T *>(this));
+		}
+	}
 
-        if (tcp_worker){
-
-            tcp_worker->mod_event(static_cast<T*>(this)); 
-        }
-
-    }
 	void set_tcpdelay()
 	{
 		int yes = 1;
@@ -91,14 +89,14 @@ public:
 			perror("set tcp nodelay failed");
 		}
 	}
+
 	template <typename... Args>
 	int32_t msend(Args &&...args)
 	{
 		if (is_open())
 		{
 			auto ret = send_buffer.mpush(std::forward<Args>(args)...);
- 
-            notify_send(); 
+			notify_send();
 			return ret;
 		}
 		return -1;
@@ -121,6 +119,7 @@ public:
 		}
 		return false;
 	}
+
 	void close()
 	{
 		this->do_close();
@@ -134,21 +133,20 @@ public:
 	void init(int fd, const std::string &host = "", uint16_t port = 0, bool passive = true)
 	{
 		this->conn_sd = fd;
- 
 		is_passive = passive;
 		remote_host = host;
 		remote_port = port;
 	}
 
 	void on_ready()
-	{ 
+	{
 		this->set_tcpdelay();
 		this->handle_event(CONN_EVENT_OPEN);
 	}
 
 	int32_t do_connect()
 	{
-		//conn_sd = socket(AF_INET, SOCK_STREAM, 0);
+		// conn_sd = socket(AF_INET, SOCK_STREAM, 0);
 		struct sockaddr_in servaddr;
 		memset(&servaddr, 0, sizeof(sockaddr_in));
 		servaddr.sin_family = AF_INET;
@@ -171,7 +169,7 @@ public:
 
 	void do_send()
 	{
-        if (is_open())
+		if (is_open())
 		{
 			if (!send_buffer.empty())
 			{
@@ -179,7 +177,7 @@ public:
 
 				if (dataLen > 0 && conn_sd > 0)
 				{
-                    printf("real send %d\n", dataLen); 
+					printf("real send %d\n", dataLen);
 
 					int rc = ::send(conn_sd, data, dataLen, 0);
 					if (rc < 0)
@@ -192,26 +190,15 @@ public:
 					send_buffer.commit(rc);
 				}
 			}
-
-		} 
+		}
 	}
 
 	int32_t do_read()
 	{
 		printf("start to read data\n");
 		int len = 0;
-		/*************************************************/
-		/* Receive all incoming data on this socket      */
-		/* before we loop back and call select again.    */
-		/*************************************************/
 		do
 		{
-			/**********************************************/
-			/* Receive data on this connection until the  */
-			/* recv fails with EWOULDBLOCK.  If any other */
-			/* failure occurs, we will close the          */
-			/* connection.                                */
-			/**********************************************/
 
 			if (conn_sd > 0)
 			{
@@ -229,19 +216,12 @@ public:
 						break;
 					}
 
-					/**********************************************/
-					/* Check to see if the connection has been    */
-					/* closed by the client                       */
-					/**********************************************/
 					if (rc == 0)
 					{
 						printf("  Connection closed\n");
 						return -1;
 					}
 
-					/**********************************************/
-					/* Data was received                          */
-					/**********************************************/
 					len = rc;
 				}
 				// printf("  %d bytes received\n", len);
@@ -298,74 +278,71 @@ public:
 		read_buffer_pos -= readPos;
 		return true;
 	}
- 
 
 	void do_close()
 	{
 		if (status < ConnStatus::CONN_CLOSING)
 		{
-			status = ConnStatus::CONN_CLOSING; 
- 
+			status = ConnStatus::CONN_CLOSING;
+
 			this->handle_event(CONN_EVENT_CLOSE);
-			
-            if (tcp_worker){ 
-                tcp_worker->del_event(static_cast<T*>(this) ); 
-            }
-            if (conn_sd > 0)
-            {
-                ::close(conn_sd);
-                conn_sd = -1;
-            }
-        }
+
+			if (tcp_worker)
+			{
+				tcp_worker->del_event(static_cast<T *>(this));
+			}
+			if (conn_sd > 0)
+			{
+				::close(conn_sd);
+				conn_sd = -1;
+			}
+		}
 	}
 
-	void process_event(int32_t evts){
+	void process_event(int32_t evts)
+	{
 
-		if (status == ConnStatus::CONN_IDLE){
-			status = ConnStatus::CONN_OPEN; 
-			this->handle_event(CONN_EVENT_OPEN); 
-            this->on_ready(); 
+		if (status == ConnStatus::CONN_IDLE)
+		{
+			status = ConnStatus::CONN_OPEN;
+			this->handle_event(CONN_EVENT_OPEN);
+			this->on_ready();
 		}
-	
+
 		if (EPOLLIN == (evts & EPOLLIN))
 		{
 			int ret = this->do_read();
-            if (ret > 0)
-            {
-                tcp_worker->mod_event(static_cast<T*>(this)); 
-            }
+			if (ret > 0)
+			{
+				tcp_worker->mod_event(static_cast<T *>(this));
+			}
 		}
-		
-        if (EPOLLOUT == (evts & EPOLLOUT))
-		{ 
+
+		if (EPOLLOUT == (evts & EPOLLOUT))
+		{
 			this->do_send();
 		}
-		
-        if (EPOLLERR == (evts & EPOLLERR))
+
+		if (EPOLLERR == (evts & EPOLLERR))
 		{
-			 printf("EPOLLERROR event %d ", evts);
-	 
+			printf("EPOLLERROR event %d ", evts);
+
 			this->do_close();
 		}
-		
-	} 
+	}
 
 	char read_buffer[kReadBufferSize];
 	int32_t read_buffer_pos = 0;
 
-	std::thread write_thread;
-	// std::thread read_thread;
-
 	LoopBuffer<> send_buffer;
 	std::mutex send_mutex;
-	//std::condition_variable send_cond;
+
 	int conn_sd = -1;
- 
+
 	uint16_t remote_port;
 	std::string remote_host;
-	 
- 
-	ConnStatus status = ConnStatus::CONN_IDLE; 
+
+	ConnStatus status = ConnStatus::CONN_IDLE;
 	TcpWorkerPtr tcp_worker;
 
 protected:

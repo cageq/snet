@@ -10,25 +10,19 @@
 #include <time.h>
 #define MAX_WAIT_EVENT 128 
 
-
-
 template <class Connection>
 class EpollWorker
 {
 public:
-    using ConnectionPtr = std::shared_ptr<Connection>;
-    std::list<ConnectionPtr> connections;
-
+    using ConnectionPtr = std::shared_ptr<Connection>; 
     int32_t start()
     {
-
         epoll_fd  =  epoll_create(10);
-
-          // 创建一个 timerfd 实例
         timer_fd = timerfd_create(CLOCK_REALTIME, 0);
         if (timer_fd == -1)
         {
-            printf("timerfd_create");
+            printf("timerfd_create failed\n");
+            return -1; 
         }
 
         is_running = true;
@@ -39,9 +33,9 @@ public:
         });
         return 0;
     }
-    bool add_event(Connection *  conn, int32_t evts = EPOLLET| EPOLLIN | EPOLLOUT | EPOLLERR)
-    {
-        
+
+    bool  add_event(Connection * conn, int32_t evts = EPOLLET| EPOLLIN | EPOLLOUT | EPOLLERR)
+    {        
         if (conn->conn_sd <0){
             return false;
         }
@@ -60,11 +54,10 @@ public:
         return true;
     }
 
-    void mod_event(Connection *  conn, int  evts = EPOLLET| EPOLLIN | EPOLLOUT | EPOLLERR)
+    bool mod_event(Connection *  conn, int  evts = EPOLLET| EPOLLIN | EPOLLOUT | EPOLLERR)
     {
-        if (conn->conn_sd <0){
-
-            return ;
+        if (conn->conn_sd < 0){
+            return false ;
         }
         struct epoll_event event{}; 
         event.events = evts;
@@ -78,66 +71,65 @@ public:
         {
             printf("mod epoll event success\n"); 
         }
+        return ret >= 0; 
     }
 
-    void del_event(Connection * conn, int evts = EPOLLIN| EPOLLOUT| EPOLLERR){
+    bool  del_event(Connection * conn, int evts = EPOLLIN| EPOLLOUT| EPOLLERR){
         if (conn->conn_sd <0){
-
-            return ;
-        }
-
+            return false ;
+        } 
         struct epoll_event event{}; 
         event.events = evts;
         event.data.ptr = conn ;
         int ret = epoll_ctl(epoll_fd, EPOLL_CTL_DEL, conn->conn_sd, &event);
         if (ret == -1)
         {
-            printf("del epoll event error");
+            printf("del epoll event failed\n");
         }
         else
         {
             printf("del epoll event success\n"); 
         }
-
+        return ret >= 0; 
     }
 
-    void add_timer(bool mod = false)
-    {
- 
-        struct itimerspec timerInterval;
-        // 设置定时器的初始时间和间隔时间
-        timerInterval.it_value.tv_sec = 2; // 2 秒后第一次触发
+    bool  add_timer(bool mod = false, uint32_t interval =1, uint32_t delay = 1)
+    { 
+        struct itimerspec timerInterval; 
+        timerInterval.it_value.tv_sec = delay;  
         timerInterval.it_value.tv_nsec = 0;
-        timerInterval.it_interval.tv_sec = 2; // 每隔 2 秒触发一次
+        timerInterval.it_interval.tv_sec = interval;  
         timerInterval.it_interval.tv_nsec = 0;
 
         if (timerfd_settime(timer_fd, 0, &timerInterval, nullptr) == -1)
         {
             printf("timerfd_settime failed\n");
+            return false; 
         }
 
-        struct epoll_event event {}; 
-        // 将 timerfd 注册到 epoll 实例中，监听其读事件
+        struct epoll_event event {};  
         event.data.fd = timer_fd;
-        event.events = EPOLLIN; // 监听可读事件
+        event.events = EPOLLIN; 
         if (mod ){
             if (epoll_ctl(epoll_fd, EPOLL_CTL_MOD, timer_fd, &event) == -1)
             {
                 printf("epoll_ctl mode failed \n");
+                return false; 
             }
         }else {
 
             if (epoll_ctl(epoll_fd, EPOLL_CTL_ADD, timer_fd, &event) == -1)
             {
                 printf("epoll_ctl add failed\n");
+                return false; 
             }
         }
- 
+
+        return true;  
     }
 
     void *run()
     {
-
         struct epoll_event waitEvents[MAX_WAIT_EVENT];
         while (is_running)
         {
@@ -152,16 +144,15 @@ public:
             {
                 int evfd = waitEvents[i].data.fd;
                 if (evfd == timer_fd){
-                    // printf("timeout\n"); 
+ 
                     add_timer(true); 
                     continue;
                 }
                 printf("get connection %d \n", i); 
-                Connection *conn = (Connection *)waitEvents[i].data.ptr;
-               
+                //TODO not safe 
+                Connection *conn = (Connection *)waitEvents[i].data.ptr;               
                 if (conn){
                     conn->process_event(waitEvents[i].events); 
-                    //this->mod_event(conn,  EPOLLIN  | EPOLLERR); 
                 }else {
                     printf("no found connection \n"); 
                 }
@@ -170,12 +161,8 @@ public:
 
         } // end while
 
-        // for (auto &conn : connections)
-        // {
-        //     this->close_connection(conn);
-        // }
-        printf("quit process thread");
-        connections.clear();
+
+        printf("quit process thread"); 
         return 0;
     }
     int timer_fd; 
