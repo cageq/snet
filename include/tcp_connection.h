@@ -78,7 +78,7 @@ public:
 		if (tcp_worker)
 		{
 			epoll_events |= EPOLLOUT; 
-			//tcp_worker->mod_event(static_cast<T *>(this), epoll_events);
+			tcp_worker->mod_event(static_cast<T *>(this), epoll_events);
 		}
 	}
 
@@ -99,12 +99,17 @@ public:
 	{
 		if (is_open())
 		{
+			bool isWriting = false; 
 			int32_t sent = 0;
 			{
 				std::lock_guard<std::mutex> lk(write_mutex);
+				isWriting = !send_buffer.empty(); 
 				sent = this->mpush(first, rest...);
 			}
-			notify_send(); 		
+			if (!isWriting){
+				notify_send(); 	
+			}
+			
 			return sent;
 		}
 		return -1;
@@ -192,79 +197,77 @@ public:
 		return conn_sd;
 	}
 
-	bool  is_writting {false}; 
+ 
 	void do_send()
 	{
-		if (is_open())
+  
 		{
-			{
-				std::lock_guard<std::mutex> lk(write_mutex); 
-				if(!send_buffer.empty()){
-					if (cache_buffer.empty() ){
-						send_buffer.swap(cache_buffer);   
-					}
+			std::lock_guard<std::mutex> lk(write_mutex); 
+			if(!send_buffer.empty()){
+				if (cache_buffer.empty() ){
+					send_buffer.swap(cache_buffer);   
 				}
 			}
- 
-			if (!cache_buffer.empty()   )
-			{			 	 
+		}
 
-				//printf("send to %d data size %lu\n",conn_sd,  cache_buffer.size()); 
-				int rc = ::send(conn_sd, cache_buffer.data(), cache_buffer.size(), 0);				
-				if (rc < 0)
-				{
-					if (errno == EAGAIN || errno == EWOULDBLOCK){
-							do_send(); 
-					}else {
-						perror("send failed");
-						do_close(); 
-					}
-					
-				}else if (rc > 0  && (uint32_t) rc < cache_buffer.size()){
-					cache_buffer.erase(0, rc); 
+		if (!cache_buffer.empty()   )
+		{			 	 
+			//printf("send to %d data size %lu\n",conn_sd,  cache_buffer.size()); 
+			int rc = ::send(conn_sd, cache_buffer.data(), cache_buffer.size(), 0);				
+			if (rc < 0)
+			{
+				if (errno == EAGAIN || errno == EWOULDBLOCK){
 					do_send(); 
 				}else {
-					string_resize(cache_buffer, 0); 
-				}							 
+					perror("send failed");
+					do_close(); 
+				}
+				return ; 
+				
+			}else if (rc > 0  && (uint32_t) rc < cache_buffer.size()){
+				cache_buffer.erase(0, rc); 
+				//do_send(); 
+			}else {
+				string_resize(cache_buffer, 0); 
 			}
-		}
+
+			//send until all buffer is empty
+			do_send(); 							 
+		}	 
+		
 	}
 
 	int32_t do_read()
 	{	 
-		int len = 0;
-		if (is_open())
+		int len = 0;	 
+		uint32_t bufSize = kReadBufferSize - read_buffer_pos;
+		if (bufSize > 0)
 		{
-			uint32_t bufSize = kReadBufferSize - read_buffer_pos;
-			if (bufSize > 0)
+			int rc = ::recv(conn_sd, &read_buffer[read_buffer_pos], bufSize, 0);
+			if (rc < 0)
 			{
-				int rc = ::recv(conn_sd, &read_buffer[read_buffer_pos], bufSize, 0);
-				if (rc < 0)
-				{
-					if (errno == EAGAIN || errno == EWOULDBLOCK){
-						do_read(); 
-					}
-					else 
-					{
-						perror("recv failed");
-						this->do_close(); 
-						return -1;
-					}
-					//if zero, try to read again? 
-					return 0; 
+				if (errno == EAGAIN || errno == EWOULDBLOCK){
+					do_read(); 
 				}
-
-				if (rc == 0)
-				{					
+				else 
+				{
+					perror("recv failed");
 					this->do_close(); 
 					return -1;
 				}
-				len = rc;
+				//if zero, try to read again? 
+				return 0; 
 			}
-			
-			this->process_data(len);
-		}
 
+			if (rc == 0)
+			{					
+				this->do_close(); 
+				return -1;
+			}
+			len = rc;
+		}
+		
+		this->process_data(len); 
 		return len;
 	}
 
@@ -338,20 +341,19 @@ public:
 			int ret = this->do_read();
 			if (ret > 0)
 			{
-				epoll_events |=   EPOLLIN; 
+				//epoll_events |=   EPOLLIN; 
 				//tcp_worker->mod_event(static_cast<T *>(this), epoll_events );
-			}
+			}	 		
 		}
 
 		if (EPOLLOUT == (evts & EPOLLOUT))
-		{
-			this->do_send();
+		{ 		 
+			this->do_send();	 		
 		}
 
 		if (EPOLLERR == (evts & EPOLLERR))
 		{
 			printf("EPOLLERROR event %d ", evts);
-
 			this->do_close();
 		}
 	}

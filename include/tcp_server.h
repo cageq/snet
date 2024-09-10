@@ -151,6 +151,14 @@ public:
 		return nullptr;
 	}
 
+	void broadcast(const std::string & msg ){
+		for (auto item : connection_map){
+			if (item.second){
+				item.second->msend(msg); 
+			}
+		}
+	}
+
 	TcpFactory<Connection> factory;
 
 private:
