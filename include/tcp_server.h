@@ -127,7 +127,7 @@ private:
 		}
 
 		// struct sockaddr_in addr;
-		struct epoll_event waitEvents[MAX_WAIT_EVENT] = {0};
+		struct epoll_event waitEvents[MAX_WAIT_EVENT] = {};
 		while (is_running)
 		{
 			printf("wait listener epoll\n");
