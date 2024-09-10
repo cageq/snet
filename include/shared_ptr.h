@@ -123,6 +123,8 @@ private:
             delete ref_count;
         }
     }
+
+    friend class WeakPtr<T> ; 
 };
 
 
@@ -168,7 +170,7 @@ public:
     }
  
 
-private:
+//private:
     RefCount<T> * ref_count = nullptr;  
 
     void release() {
@@ -187,6 +189,9 @@ private:
 template <typename T>
 class EnableSharedFromThis {
 public:
+
+
+
     SharedPtr<T> shared_from_this() {
         // 检查 weak_ptr 是否为空
         if (auto sp = weak_this.lock()) {
@@ -210,6 +215,8 @@ protected:
     EnableSharedFromThis(const EnableSharedFromThis&) = delete;
     EnableSharedFromThis& operator=(const EnableSharedFromThis&) = delete;
 
+
+  
 
     template <typename U>
     friend class SharedPtr;
