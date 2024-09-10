@@ -21,6 +21,11 @@
 #include "epoll_worker.h"
 #include "tcp_factory.h"
 
+inline void string_resize(std::string &str, std::size_t sz)
+{
+	str.resize(sz);
+}
+
 enum ConnStatus
 {
 	CONN_IDLE,
@@ -63,20 +68,15 @@ public:
 
 	int32_t send(const char *data, uint32_t dataLen)
 	{
-		if (is_open())
-		{
-			int ret = send_buffer.push(data, dataLen);
-			notify_send();
-			return dataLen;
-		}
-		return -1;
+	 	return msend(std::string_view(data, dataLen)); 			 
 	}
 
 	void notify_send()
 	{
 		if (tcp_worker)
 		{
-			tcp_worker->mod_event(static_cast<T *>(this));
+			epoll_events |= EPOLLOUT; 
+			//tcp_worker->mod_event(static_cast<T *>(this), epoll_events);
 		}
 	}
 
@@ -90,17 +90,24 @@ public:
 		}
 	}
 
-	template <typename... Args>
-	int32_t msend(Args &&...args)
+ 
+
+	template <class P, class... Args>
+	int32_t msend(const P &first, Args &&...rest)
 	{
 		if (is_open())
 		{
-			auto ret = send_buffer.mpush(std::forward<Args>(args)...);
-			notify_send();
-			return ret;
+			int32_t sent = 0;
+			{
+				std::lock_guard<std::mutex> lk(write_mutex);
+				sent = this->mpush(first, rest...);
+			}
+			notify_send(); 		
+			return sent;
 		}
 		return -1;
 	}
+	 
 
 	virtual int32_t demarcate_message(char *data, uint32_t len)
 	{
@@ -132,6 +139,7 @@ public:
 
 	void init(int fd, const std::string &host = "", uint16_t port = 0, bool passive = true)
 	{
+		epoll_events = EPOLLET| EPOLLIN| EPOLLERR; 
 		this->conn_sd = fd;
 		is_passive = passive;
 		remote_host = host;
@@ -167,28 +175,36 @@ public:
 		return conn_sd;
 	}
 
+	bool  is_writting {false}; 
 	void do_send()
 	{
 		if (is_open())
 		{
-			if (!send_buffer.empty())
 			{
-				auto [data, dataLen] = send_buffer.read();
-
-				if (dataLen > 0 && conn_sd > 0)
-				{
-					printf("real send %d\n", dataLen);
-
-					int rc = ::send(conn_sd, data, dataLen, 0);
-					if (rc < 0)
-					{
-						perror("send() failed");
-						do_close();
-						return;
+				std::lock_guard<std::mutex> lk(write_mutex); 
+				if(!send_buffer.empty()){
+					if (cache_buffer.empty() ){
+						send_buffer.swap(cache_buffer);   
 					}
-
-					send_buffer.commit(rc);
 				}
+			}
+ 
+			if (!cache_buffer.empty()   )
+			{			 
+				printf("real send %lu\n", cache_buffer.size());
+
+				int rc = ::send(conn_sd, cache_buffer.data(), cache_buffer.size(), 0);
+				if (rc < 0)
+				{
+					perror("send() failed");
+					do_close();
+					return;
+				}else if (rc > 0  && (uint32_t) rc < cache_buffer.size()){
+					cache_buffer.erase(0, rc); 
+					do_send(); 
+				}else {
+					string_resize(cache_buffer, 0); 
+				}							 
 			}
 		}
 	}
@@ -296,6 +312,7 @@ public:
 				::close(conn_sd);
 				conn_sd = -1;
 			}
+			status =  ConnStatus::CONN_CLOSED; 
 		}
 	}
 
@@ -304,8 +321,7 @@ public:
 
 		if (status == ConnStatus::CONN_IDLE)
 		{
-			status = ConnStatus::CONN_OPEN;
-			this->handle_event(CONN_EVENT_OPEN);
+			status = ConnStatus::CONN_OPEN;			
 			this->on_ready();
 		}
 
@@ -314,7 +330,8 @@ public:
 			int ret = this->do_read();
 			if (ret > 0)
 			{
-				tcp_worker->mod_event(static_cast<T *>(this));
+				epoll_events |=   EPOLLIN; 
+				//tcp_worker->mod_event(static_cast<T *>(this), epoll_events );
 			}
 		}
 
@@ -334,8 +351,7 @@ public:
 	char read_buffer[kReadBufferSize];
 	int32_t read_buffer_pos = 0;
 
-	LoopBuffer<> send_buffer;
-	std::mutex send_mutex;
+
 
 	int conn_sd = -1;
 
@@ -346,5 +362,51 @@ public:
 	TcpWorkerPtr tcp_worker;
 
 protected:
+	template <typename P>
+	inline uint32_t write_data(const P &data)
+	{
+		send_buffer.append(std::string_view((const char *)&data, sizeof(P)));
+		return send_buffer.size();
+	}
+
+	inline uint32_t write_data(const std::string_view &data)
+	{
+		send_buffer.append(data);
+		return send_buffer.size();
+	}
+
+	inline uint32_t write_data(const std::string &data)
+	{
+		send_buffer.append(data);
+		return send_buffer.size();
+	}
+
+	inline uint32_t write_data(const char *data)
+	{
+		if (data != nullptr)
+		{
+			send_buffer.append(std::string_view(data));
+			return send_buffer.size();
+		}
+		return 0;
+	}
+
+	template <typename F, typename... Args>
+	int32_t mpush(const F &data, Args &&...rest)
+	{
+		auto len = this->write_data(data);
+		return len > 0 ? len + mpush(std::forward<Args &&>(rest)...) : 0;
+	}
+
+	int32_t mpush()
+	{
+		return 0;
+	}
+
+	std::mutex write_mutex;
+	std::string send_buffer;
+	std::string cache_buffer;
+	 
+	int32_t epoll_events = 0 ; 
 	bool is_passive = true;
 };

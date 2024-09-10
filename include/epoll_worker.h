@@ -156,7 +156,6 @@ public:
                 }else {
                     printf("no found connection \n"); 
                 }
-
             }
 
         } // end while

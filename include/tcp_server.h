@@ -159,7 +159,7 @@ private:
 		int opts = fcntl(sock, F_GETFL, 0);
 		fcntl(sock, F_SETFL, opts | O_NONBLOCK);
 	}
-	
+
 	static void set_noblock(int sock)
 	{
 		int opts = fcntl(sock, F_GETFL, 0);
@@ -254,7 +254,7 @@ private:
 					printf("accept new connection from %s:%u\n", remoteHost, remotePort);
 					conn->init(clientFd, remoteHost, remotePort, true );
 					worker->add_event(conn.get());
-					conn->on_ready();
+			
 				}
 			}
 		}
