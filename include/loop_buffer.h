@@ -28,7 +28,6 @@
 
 #ifndef __MEM_BARRIER__ 
 #define __MEM_BARRIER__ __asm__ __volatile__("dmb ish" ::: "memory")
-//#define __MEM_BARRIER__ asm volatile("dmb ish" ::: "memory")
 #endif // 
 
 #ifndef __READ_BARRIER__ 
@@ -38,7 +37,6 @@
 
 #ifndef __WRITE_BARRIER__
 #define __WRITE_BARRIER__  __asm__ __volatile__("dmb ishst":::"memory")
-//#define __WRITE_BARRIER__ asm volatile("dmb ishst" ::: "memory")
 #endif // 
 	
 #else 
