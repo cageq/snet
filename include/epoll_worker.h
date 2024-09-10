@@ -8,124 +8,131 @@
 #include <sys/timerfd.h>
 #include <stdint.h>
 #include <time.h>
-#define MAX_WAIT_EVENT 128 
+#define MAX_WAIT_EVENT 128
 
 template <class Connection>
 class EpollWorker
 {
 public:
-    using ConnectionPtr = std::shared_ptr<Connection>; 
+    using ConnectionPtr = std::shared_ptr<Connection>;
     int32_t start()
     {
-        epoll_fd  =  epoll_create(10);
+        epoll_fd = epoll_create(10);
         timer_fd = timerfd_create(CLOCK_REALTIME, 0);
         if (timer_fd == -1)
         {
             printf("timerfd_create failed\n");
-            return -1; 
+            return -1;
         }
 
         is_running = true;
-        epoll_thread = std::thread([this]{ 
-            add_timer(); 
-            run(); 
-                                   
-        });
+        epoll_thread = std::thread([this]
+                                   {
+                                       add_timer();
+                                       run();
+                                   });
         return 0;
     }
 
-    bool  add_event(Connection * conn, int32_t evts = EPOLLET| EPOLLIN | EPOLLOUT | EPOLLERR)
-    {        
-        if (conn->conn_sd <0){
-            return false;
-        }
-        
-        struct epoll_event event{}; 
-        event.data.ptr = conn;  
-        event.events = evts; 
-        int ret = epoll_ctl(epoll_fd, EPOLL_CTL_ADD, conn->conn_sd, &event);
-        if (ret != 0)
-        {
-            printf("add conn to worker failed\n"); 
-            ::close(conn->conn_sd);
-            return false;
-        }
-
-        return true;
-    }
-
-    bool mod_event(Connection *  conn, int  evts = EPOLLET| EPOLLIN | EPOLLOUT | EPOLLERR)
+    bool add_event(Connection *conn, int32_t evts = EPOLLET | EPOLLIN | EPOLLOUT | EPOLLERR)
     {
-        if (conn->conn_sd < 0){
-            return false ;
-        }
-        struct epoll_event event{}; 
-        event.events = evts;
-        event.data.ptr = conn ;
-        int ret = epoll_ctl(epoll_fd, EPOLL_CTL_MOD, conn->conn_sd, &event);
-        if (ret == -1)
+        if (conn->conn_sd > 0 )
         {
-            printf("mod epoll event error");
+            struct epoll_event event ={};
+            event.data.ptr = conn;
+            event.events = evts;
+            int ret = epoll_ctl(epoll_fd, EPOLL_CTL_ADD, conn->conn_sd, &event);
+            if (ret != 0)
+            {
+                printf("add conn to worker failed\n");
+                ::close(conn->conn_sd);
+                return false;
+            }
+
+            return true;
         }
-        else
-        {
-            printf("mod epoll event success\n"); 
-        }
-        return ret >= 0; 
+        return false;
     }
 
-    bool  del_event(Connection * conn, int evts = EPOLLIN| EPOLLOUT| EPOLLERR){
-        if (conn->conn_sd <0){
-            return false ;
-        } 
-        struct epoll_event event{}; 
-        event.events = evts;
-        event.data.ptr = conn ;
-        int ret = epoll_ctl(epoll_fd, EPOLL_CTL_DEL, conn->conn_sd, &event);
-        if (ret == -1)
+    bool mod_event(Connection *conn, int evts = EPOLLET | EPOLLIN | EPOLLOUT | EPOLLERR)
+    {
+        if (conn->conn_sd > 0 )
         {
-            printf("del epoll event failed\n");
+            struct epoll_event event= {};
+            event.events = evts;
+            event.data.ptr = conn;
+            int ret = epoll_ctl(epoll_fd, EPOLL_CTL_MOD, conn->conn_sd, &event);
+            if (ret == -1)
+            {
+                printf("mod epoll event error");
+            }
+            else
+            {
+                printf("mod epoll event success\n");
+            }
+            return ret >= 0;
         }
-        else
-        {
-            printf("del epoll event success\n"); 
-        }
-        return ret >= 0; 
+        return false;
     }
 
-    bool  add_timer(bool mod = false, uint32_t interval =1, uint32_t delay = 1)
-    { 
-        struct itimerspec timerInterval; 
-        timerInterval.it_value.tv_sec = delay;  
+    bool del_event(Connection *conn, int evts = EPOLLIN | EPOLLOUT | EPOLLERR)
+    {
+        if (conn->conn_sd > 0 ){
+            struct epoll_event event = {}; 
+            event.events = evts;
+            event.data.ptr = conn;
+            int ret = epoll_ctl(epoll_fd, EPOLL_CTL_DEL, conn->conn_sd, &event);
+            if (ret == -1)
+            {
+                printf("del epoll event failed\n");
+            }
+            else
+            {
+                printf("del epoll event success\n");
+            }
+            return ret >= 0;
+        }
+        return false;     
+    }
+
+    bool add_timer(bool mod = false, uint32_t interval = 1, uint32_t delay = 1)
+    {
+        struct itimerspec timerInterval;
+        timerInterval.it_value.tv_sec = delay;
         timerInterval.it_value.tv_nsec = 0;
-        timerInterval.it_interval.tv_sec = interval;  
+        timerInterval.it_interval.tv_sec = interval;
         timerInterval.it_interval.tv_nsec = 0;
 
         if (timerfd_settime(timer_fd, 0, &timerInterval, nullptr) == -1)
         {
             printf("timerfd_settime failed\n");
-            return false; 
+            return false;
         }
 
-        struct epoll_event event {};  
+        struct epoll_event event
+        {
+        };
         event.data.fd = timer_fd;
-        event.events = EPOLLIN; 
-        if (mod ){
+        event.events = EPOLLIN;
+        if (mod)
+        {
             if (epoll_ctl(epoll_fd, EPOLL_CTL_MOD, timer_fd, &event) == -1)
             {
                 printf("epoll_ctl mode failed \n");
-                return false; 
+                return false;
             }
-        }else {
+        }
+        else
+        {
 
             if (epoll_ctl(epoll_fd, EPOLL_CTL_ADD, timer_fd, &event) == -1)
             {
                 printf("epoll_ctl add failed\n");
-                return false; 
+                return false;
             }
         }
 
-        return true;  
+        return true;
     }
 
     void *run()
@@ -143,28 +150,31 @@ public:
             for (int i = 0; i < ret; i++)
             {
                 int evfd = waitEvents[i].data.fd;
-                if (evfd == timer_fd){
- 
-                    add_timer(true); 
+                if (evfd == timer_fd)
+                {
+
+                    add_timer(true);
                     continue;
                 }
-             
-                //TODO not safe 
-                Connection *conn = (Connection *)waitEvents[i].data.ptr;               
-                if (conn){
-                    conn->process_event(waitEvents[i].events); 
-                }else {
-                    printf("no found connection \n"); 
+
+                // TODO not safe
+                Connection *conn = (Connection *)waitEvents[i].data.ptr;
+                if (conn)
+                {
+                    conn->process_event(waitEvents[i].events);
+                }
+                else
+                {
+                    printf("no found connection \n");
                 }
             }
 
         } // end while
 
-
-        printf("quit process thread"); 
+        printf("quit process thread");
         return 0;
     }
-    int timer_fd; 
+    int timer_fd;
     bool is_running = false;
     int epoll_fd;
     std::thread epoll_thread;

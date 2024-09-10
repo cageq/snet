@@ -1,6 +1,6 @@
 #pragma once
 
-#include "loop_buffer.h"
+ 
 #include <cstdio>
 #include <errno.h>
 #include <memory>
@@ -17,6 +17,8 @@
 #include <fcntl.h>
 #include <unistd.h>
 #include <sys/epoll.h>
+#include <functional>
+#include <mutex>
 
 #include "epoll_worker.h"
 #include "tcp_factory.h"
@@ -122,7 +124,8 @@ public:
 	{
 		if (conn_sd > 0)
 		{
-			return (status == CONN_OPEN) && (fcntl(conn_sd, F_GETFD) != -1 || errno != EBADF);
+			//return (status == CONN_OPEN) && (fcntl(conn_sd, F_GETFD) != -1 || errno != EBADF);
+			return (status == CONN_OPEN) ;
 		}
 		return false;
 	}
@@ -151,6 +154,20 @@ public:
 		this->set_tcpdelay();
 		this->handle_event(CONN_EVENT_OPEN);
 	}
+
+	uint64_t start_timer(const TimerHandler &handler, uint64_t interval, bool bLoop = true)
+	{
+		return tcp_worker->start_timer(handler, interval, bLoop);
+	}
+	bool restart_timer(uint64_t timerId, uint64_t interval = 0)
+	{
+		return tcp_worker->restart_timer(timerId, interval);
+	}
+	void stop_timer(uint64_t timerId)
+	{
+		tcp_worker->stop_timer(timerId);
+	}
+
 
 	int32_t do_connect()
 	{
@@ -190,15 +207,19 @@ public:
 			}
  
 			if (!cache_buffer.empty()   )
-			{			 
-				printf("real send %lu\n", cache_buffer.size());
+			{			 	 
 
-				int rc = ::send(conn_sd, cache_buffer.data(), cache_buffer.size(), 0);
+				//printf("send to %d data size %lu\n",conn_sd,  cache_buffer.size()); 
+				int rc = ::send(conn_sd, cache_buffer.data(), cache_buffer.size(), 0);				
 				if (rc < 0)
 				{
-					perror("send() failed");
-					do_close();
-					return;
+					if (errno == EAGAIN || errno == EWOULDBLOCK){
+							do_send(); 
+					}else {
+						perror("send failed");
+						do_close(); 
+					}
+					
 				}else if (rc > 0  && (uint32_t) rc < cache_buffer.size()){
 					cache_buffer.erase(0, rc); 
 					do_send(); 
@@ -210,56 +231,43 @@ public:
 	}
 
 	int32_t do_read()
-	{
-		printf("start to read data\n");
+	{	 
 		int len = 0;
-		do
+		if (is_open())
 		{
-
-			if (conn_sd > 0)
+			uint32_t bufSize = kReadBufferSize - read_buffer_pos;
+			if (bufSize > 0)
 			{
-				uint32_t bufSize = kReadBufferSize - read_buffer_pos;
-				if (bufSize > 0)
+				int rc = ::recv(conn_sd, &read_buffer[read_buffer_pos], bufSize, 0);
+				if (rc < 0)
 				{
-					int rc = recv(conn_sd, &read_buffer[read_buffer_pos], bufSize, 0);
-					if (rc < 0)
-					{
-						if (errno != EWOULDBLOCK)
-						{
-							perror("  recv() failed");
-							return -1;
-						}
-						break;
+					if (errno == EAGAIN || errno == EWOULDBLOCK){
+						do_read(); 
 					}
-
-					if (rc == 0)
+					else 
 					{
-						printf("connection closed\n");
+						perror("recv failed");
+						this->do_close(); 
 						return -1;
 					}
-
-					len = rc;
+					//if zero, try to read again? 
+					return 0; 
 				}
-				// printf("  %d bytes received\n", len);
-				this->process_data(len);
-			}
 
-		} while (0);
+				if (rc == 0)
+				{					
+					this->do_close(); 
+					return -1;
+				}
+				len = rc;
+			}
+			
+			this->process_data(len);
+		}
+
 		return len;
 	}
 
-	uint64_t start_timer(const TimerHandler &handler, uint64_t interval, bool bLoop = true)
-	{
-		return tcp_worker->start_timer(handler, interval, bLoop);
-	}
-	bool restart_timer(uint64_t timerId, uint64_t interval = 0)
-	{
-		return tcp_worker->restart_timer(timerId, interval);
-	}
-	void stop_timer(uint64_t timerId)
-	{
-		tcp_worker->stop_timer(timerId);
-	}
 
 	bool process_data(uint32_t nread)
 	{
@@ -352,15 +360,12 @@ public:
 	int32_t read_buffer_pos = 0;
 
 
-
-	int conn_sd = -1;
-
 	uint16_t remote_port;
 	std::string remote_host;
 
 	ConnStatus status = ConnStatus::CONN_IDLE;
 	TcpWorkerPtr tcp_worker;
-
+	int conn_sd = -1;
 protected:
 	template <typename P>
 	inline uint32_t write_data(const P &data)
@@ -403,10 +408,11 @@ protected:
 		return 0;
 	}
 
+
 	std::mutex write_mutex;
 	std::string send_buffer;
 	std::string cache_buffer;
-	 
+	 	
 	int32_t epoll_events = 0 ; 
 	bool is_passive = true;
 };
