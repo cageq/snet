@@ -19,6 +19,7 @@
 #include <sys/epoll.h>
 #include <functional>
 #include <mutex>
+#include <string>
 #include <atomic> 
 
 #include "epoll_worker.h"
