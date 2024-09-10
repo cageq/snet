@@ -234,7 +234,7 @@ public:
 
 					if (rc == 0)
 					{
-						printf("  Connection closed\n");
+						printf("connection closed\n");
 						return -1;
 					}
 

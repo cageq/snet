@@ -148,7 +148,7 @@ public:
                     add_timer(true); 
                     continue;
                 }
-                printf("get connection %d \n", i); 
+             
                 //TODO not safe 
                 Connection *conn = (Connection *)waitEvents[i].data.ptr;               
                 if (conn){
