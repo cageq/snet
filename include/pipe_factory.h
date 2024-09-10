@@ -16,11 +16,11 @@ public:
 
   using PipeConnectionPtr = std::shared_ptr<PipeConnection<UserSession>>;
 
-  virtual void on_create(PipeConnectionPtr conn) {
+  virtual void on_create(uint64_t cid, PipeConnectionPtr conn) override {
     conn->pipe_factory = this; 
   }
 
-  virtual void on_release(PipeConnectionPtr conn) {
+  virtual void on_release(uint64_t cid, PipeConnectionPtr conn) override {
 
   }
 

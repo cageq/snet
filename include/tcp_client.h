@@ -35,8 +35,7 @@ public:
   bool start()
   {
     signal(SIGPIPE, SIG_IGN);
-
-    tcp_worker->start();
+    tcp_worker->start(connection_factory);
     return true;
   }
 

@@ -19,9 +19,11 @@
 #include <sys/epoll.h>
 #include <functional>
 #include <mutex>
+#include <atomic> 
 
 #include "epoll_worker.h"
 #include "tcp_factory.h"
+
 
 inline void string_resize(std::string &str, std::size_t sz)
 {
@@ -45,6 +47,8 @@ enum ConnEvent
 	CONN_EVENT_CLOSE
 };
 
+
+
 using TimerHandler = std::function<bool()>;
 
 template <class T>
@@ -54,14 +58,16 @@ class TcpConnection : public std::enable_shared_from_this<T>
 public:
 	using TcpWorker = EpollWorker<T>;
 	using TcpWorkerPtr = std::shared_ptr<TcpWorker>;
-
-	TcpConnection() = default;
-
 	enum
 	{
 		kReadBufferSize = 1024 * 1024 * 8,
 		kWriteBufferSize = 1024 * 1024 * 8,
 		kMaxPackageLimit = 16 * 1024
+	};
+
+	TcpConnection(){		
+		conn_id = connection_index ++; 
+		send_buffer.reserve(kWriteBufferSize); 
 	};
 
 	virtual ~TcpConnection()
@@ -91,8 +97,6 @@ public:
 			perror("set tcp nodelay failed");
 		}
 	}
-
- 
 
 	template <class P, class... Args>
 	int32_t msend(const P &first, Args &&...rest)
@@ -293,7 +297,6 @@ public:
 
 			handle_data(&read_buffer[readPos], pkgLen);
 			readPos += pkgLen;
-
 			// add flow control
 		}
 
@@ -308,22 +311,26 @@ public:
 
 	void do_close()
 	{
+		printf("do close in status %d\n", status); 
 		if (status < ConnStatus::CONN_CLOSING)
 		{
-			status = ConnStatus::CONN_CLOSING;
-
-			this->handle_event(CONN_EVENT_CLOSE);
+			status = ConnStatus::CONN_CLOSING;	
 
 			if (tcp_worker)
 			{
-				tcp_worker->del_event(static_cast<T *>(this));
+				tcp_worker->del_event(static_cast<T *>(this));				
 			}
+			this->handle_event(CONN_EVENT_CLOSE);	
+			::close(conn_sd);			
+			tcp_worker->release(conn_id, this->shared_from_this()); 
+		}else if (status == ConnStatus::CONN_CLOSING){
+			
 			if (conn_sd > 0)
-			{
-				::close(conn_sd);
+			{				
 				conn_sd = -1;
 			}
 			status =  ConnStatus::CONN_CLOSED; 
+			
 		}
 	}
 
@@ -348,7 +355,9 @@ public:
 
 		if (EPOLLOUT == (evts & EPOLLOUT))
 		{ 		 
-			this->do_send();	 		
+			if (is_open()){
+				this->do_send();	 		
+			}			
 		}
 
 		if (EPOLLERR == (evts & EPOLLERR))
@@ -361,13 +370,15 @@ public:
 	char read_buffer[kReadBufferSize];
 	int32_t read_buffer_pos = 0;
 
-
 	uint16_t remote_port;
 	std::string remote_host;
 
 	ConnStatus status = ConnStatus::CONN_IDLE;
 	TcpWorkerPtr tcp_worker;
 	int conn_sd = -1;
+	inline uint64_t get_cid(){		
+		return conn_id; 
+	}
 protected:
 	template <typename P>
 	inline uint32_t write_data(const P &data)
@@ -411,10 +422,18 @@ protected:
 	}
 
 
-	std::mutex write_mutex;
+
+
+	std::mutex  write_mutex;
 	std::string send_buffer;
 	std::string cache_buffer;
 	 	
 	int32_t epoll_events = 0 ; 
 	bool is_passive = true;
+	uint64_t conn_id ; //connection id 
+	static std::atomic_int64_t  connection_index  ; 
 };
+
+ 
+template <class T>
+std::atomic_int64_t TcpConnection <T>::connection_index {1024}; 

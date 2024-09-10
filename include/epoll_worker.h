@@ -8,6 +8,8 @@
 #include <sys/timerfd.h>
 #include <stdint.h>
 #include <time.h>
+#include "tcp_factory.h"
+#include <vector> 
 #define MAX_WAIT_EVENT 128
 
 template <class Connection>
@@ -15,8 +17,10 @@ class EpollWorker
 {
 public:
     using ConnectionPtr = std::shared_ptr<Connection>;
-    int32_t start()
+    using TcpFactoryPtr =   TcpFactory<Connection> *  ; 
+    int32_t start(TcpFactoryPtr factory )
     {
+        tcp_factory = factory; 
         epoll_fd = epoll_create(10);
         timer_fd = timerfd_create(CLOCK_REALTIME, 0);
         if (timer_fd == -1)
@@ -26,11 +30,11 @@ public:
         }
 
         is_running = true;
-        epoll_thread = std::thread([this]
-                                   {
+        epoll_thread = std::thread([this] {
                                        add_timer();
                                        run();
                                    });
+    
         return 0;
     }
 
@@ -68,27 +72,25 @@ public:
             }
             else
             {
-                printf("mod epoll event success\n");
+                //printf("mod epoll event success\n");
             }
             return ret >= 0;
         }
         return false;
     }
 
-    bool del_event(Connection *conn, int evts = EPOLLIN | EPOLLOUT | EPOLLERR)
+    bool del_event(Connection *conn )
     {
         if (conn->conn_sd > 0 ){
-            struct epoll_event event = {}; 
-            event.events = evts;
-            event.data.ptr = conn;
-            int ret = epoll_ctl(epoll_fd, EPOLL_CTL_DEL, conn->conn_sd, &event);
+      
+            int ret = epoll_ctl(epoll_fd, EPOLL_CTL_DEL, conn->conn_sd, nullptr);
             if (ret == -1)
             {
                 printf("del epoll event failed\n");
             }
             else
             {
-                printf("del epoll event success\n");
+                printf("del epoll event success %d\n", conn->conn_sd);
             }
             return ret >= 0;
         }
@@ -135,6 +137,11 @@ public:
         return true;
     }
 
+    void release( uint64_t cid , ConnectionPtr conn  ){
+     
+        release_connections.push_back(conn); 
+    }
+
     void *run()
     {
         struct epoll_event waitEvents[MAX_WAIT_EVENT];
@@ -152,12 +159,17 @@ public:
                 int evfd = waitEvents[i].data.fd;
                 if (evfd == timer_fd)
                 {
-
                     add_timer(true);
+
+                    for(auto conn : release_connections){
+                        conn->do_close(); 
+                        tcp_factory->remove_connection(conn->get_cid());                       
+                    }
+                    release_connections.clear(); 
                     continue;
                 }
 
-                // TODO not safe
+                // TODO not safe,but efficiency 
                 Connection *conn = (Connection *)waitEvents[i].data.ptr;
                 if (conn)
                 {
@@ -174,8 +186,11 @@ public:
         printf("quit process thread");
         return 0;
     }
-    int timer_fd;
+
+    std::vector<ConnectionPtr > release_connections; 
+    int timer_fd = -1 ;
     bool is_running = false;
-    int epoll_fd;
+    int epoll_fd = -1 ;
     std::thread epoll_thread;
+    TcpFactoryPtr  tcp_factory = nullptr; 
 };

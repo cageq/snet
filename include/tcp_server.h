@@ -22,7 +22,7 @@
 #include "epoll_worker.h"
 
 template <class Connection, class Factory = TcpFactory<Connection>>
-class TcpServer : public HeapTimer<>
+class TcpServer : public HeapTimer<> , public Factory
 {
 
 public:
@@ -31,27 +31,29 @@ public:
 	using TcpWorkerPtr = std::shared_ptr<TcpWorker>;
 
 	TcpServer(Factory *factory = nullptr, int32_t workers = 4) : connection_factory(factory)
-	{
+	{ 
+		if (connection_factory == nullptr){
+			connection_factory = this; 
+		}
+
 		for (int i = 0; i < workers; i++)
 		{
 			auto worker = std::make_shared<TcpWorker>();
-			worker->start();
+			worker->start(connection_factory);
 			tcp_workers.push_back(worker);
 		}
 	}
 
 	int start(uint16_t port, const std::string &host = "0.0.0.0", uint32_t acceptThrds = 1)
 	{
-
 		listen_epoll_fd = epoll_create(10);
-
 		if (-1 == listen_epoll_fd)
 		{
 			perror("create epoll error ");
 			return -1;
 		}
-		printf("start listen port %d\n", port);
 		listen_addr = host;
+		printf("start listen  %s:%d\n", host.c_str(), port );		
 
 		int ret = fcntl(listen_epoll_fd, F_SETFD, FD_CLOEXEC);
 		if (ret < 0)
@@ -70,23 +72,12 @@ public:
 		set_reuse();
 		set_nonblocking(listen_sd);
 		do_bind(port, host.c_str());
-		do_listen();
+		do_listen();	
 
-		is_running = true;
-
-		if (acceptThrds > 1)
+		for (uint32_t i = 0; i < acceptThrds; ++i)
 		{
-			for (uint32_t i = 0; i < acceptThrds; ++i)
-			{
-				listen_threads.emplace_back([this]()
-											{ run(); });
-			}
-		}
-		else
-		{
-			listen_thread = std::thread([this]()
-										{ run(); });
-		}
+			listen_threads.emplace_back([this](){ run();});
+		}	
 
 		return 0;
 	}
@@ -98,12 +89,7 @@ public:
 			is_running = false;
 			::close(listen_sd);
 		}
-
-		if (listen_thread.joinable())
-		{
-			listen_thread.join();
-		}
-
+ 
 		for (auto &th : listen_threads)
 		{
 			if (th.joinable())
@@ -112,102 +98,51 @@ public:
 			}
 		}
 	}
-
-	virtual ConnectionPtr create()
-	{
-		if (connection_factory)
-		{
-			return connection_factory->create();
-		}
-		return std::make_shared<Connection>();
-	}
-
-	virtual void release(ConnectionPtr conn)
-	{
-		if (connection_factory)
-		{
-			return connection_factory->release(conn);
-		}
-	}
-
-	void add_connection(int sd, ConnectionPtr conn)
-	{
-		connection_map[sd] = conn;
-	}
-	int32_t remove_connection(int sd)
-	{
-		return connection_map.erase(sd);
-	}
-
-	ConnectionPtr find_connection(int sd)
-	{
-
-		auto itr = connection_map.find(sd);
-		if (itr != connection_map.end())
-		{
-			return itr->second;
-		}
-
-		return nullptr;
-	}
-
+ 
 	void broadcast(const std::string & msg ){
-		for (auto item : connection_map){
+
+		for (auto item :connection_factory->connection_map){
 			if (item.second){
 				item.second->msend(msg); 
 			}
 		}
 	}
 
-	TcpFactory<Connection> factory;
-
 private:
-	static void set_nodelay(int sock)
-	{
-		int opts = fcntl(sock, F_GETFL, 0);
-		fcntl(sock, F_SETFL, opts | O_NONBLOCK);
-	}
-
-	static void set_noblock(int sock)
-	{
-		int opts = fcntl(sock, F_GETFL, 0);
-		if (opts < 0)
-		{
-			printf("fcntl(sock,GETFL)");
-			return;
-		}
-		if (fcntl(sock, F_SETFL, opts | O_NONBLOCK) < 0)
-		{
-			printf("fcntl(sock,SETFL,opts)");
-		}
-	}
 
 	void run()
 	{
+		is_running = true;
 		struct epoll_event event{};
 		event.data.fd = listen_sd;
-		event.events = EPOLLIN | EPOLLERR;
-
+		event.events  = EPOLLET| EPOLLIN | EPOLLERR;
 		// register listen fd to epoll fd
 		int ret = epoll_ctl(listen_epoll_fd, EPOLL_CTL_ADD, listen_sd, &event);
 		if (-1 == ret)
 		{
 			// trace;
 			printf("add listen fd to epoll fd failed\n");
-			throw errno;
+			is_running = false; 
+			return ; 
 		}
 
 		// struct sockaddr_in addr;
 		struct epoll_event waitEvents[MAX_WAIT_EVENT] = {0};
 		while (is_running)
 		{
-			printf("listener epoll wait\n");
+			printf("wait listener epoll\n");
 			// wait untill events
 			int nFds = epoll_wait(listen_epoll_fd, waitEvents, MAX_WAIT_EVENT, -1);
 			if (nFds < 0)
 			{
-				printf("wait error , errno is %d\n", errno); // must EINTR
-				continue;
+				if (errno == EAGAIN || errno == EWOULDBLOCK) {
+
+					continue;
+				}else {
+					printf("wait error , errno is %d\n", errno); 
+					break; 
+				}	
+				
 			}
 
 			for (int i = 0; i < nFds; i++)
@@ -219,9 +154,7 @@ private:
 					int addrlen = sizeof(cliAddr);
 	 
 					// int clientFd = accept(listen_sd, (struct sockaddr *)&cliAddr, (socklen_t*)&addrlen);
-					int clientFd = accept4(listen_sd, (struct sockaddr *)&cliAddr, (socklen_t *)&addrlen, SOCK_NONBLOCK | SOCK_CLOEXEC);
-
-	 
+					int clientFd = accept4(listen_sd, (struct sockaddr *)&cliAddr, (socklen_t *)&addrlen, SOCK_NONBLOCK | SOCK_CLOEXEC); 
 					if (clientFd < 0)
 					{
 						if ((errno == EAGAIN) || (errno == EWOULDBLOCK))
@@ -237,9 +170,8 @@ private:
 					}
 
 					set_nodelay(clientFd);
-					set_noblock(clientFd);
-
-					
+					//set_noblock(clientFd);
+ 
 					ConnectionPtr conn;
 					if (connection_factory != nullptr)
 					{
@@ -250,9 +182,7 @@ private:
 						conn = std::make_shared<Connection>();
 					}
  
-					auto worker = get_worker(); 
- 
-					add_connection(clientFd, conn);
+					auto worker = get_worker();   
 					conn->tcp_worker = worker; 
  
 					char remoteHost[INET_ADDRSTRLEN] ={};
@@ -261,8 +191,7 @@ private:
 
 					printf("accept new connection from %s:%u\n", remoteHost, remotePort);
 					conn->init(clientFd, remoteHost, remotePort, true );
-					worker->add_event(conn.get());
-			
+					worker->add_event(conn.get());			
 				}
 			}
 		}
@@ -286,14 +215,33 @@ private:
 		}
 	}
 
+	static void set_nodelay(int sock)
+	{
+		int opts = fcntl(sock, F_GETFL, 0);
+		fcntl(sock, F_SETFL, opts | O_NONBLOCK);
+	}
+
+	static void set_noblock(int sock)
+	{
+		int opts = fcntl(sock, F_GETFL, 0);
+		if (opts < 0)
+		{
+			printf("fcntl(sock,GETFL)");
+			return;
+		}
+		if (fcntl(sock, F_SETFL, opts | O_NONBLOCK) < 0)
+		{
+			printf("fcntl(sock,SETFL,opts)");
+		}
+	}
+
+	/*************************************************************/
+	/* Set socket to be nonblocking. All of the sockets for      */
+	/* the incoming connections will also be nonblocking since   */
+	/* they will inherit that state from the listening socket.   */
+	/*************************************************************/
 	void set_nonblocking(int sd)
 	{
-
-		/*************************************************************/
-		/* Set socket to be nonblocking. All of the sockets for      */
-		/* the incoming connections will also be nonblocking since   */
-		/* they will inherit that state from the listening socket.   */
-		/*************************************************************/
 		int on = 1;
 		int rc = ioctl(sd, FIONBIO, (char *)&on);
 		if (rc < 0)
@@ -343,7 +291,8 @@ private:
 
 	TcpWorkerPtr get_worker()
 	{
-		worker_index = (worker_index + 1) % tcp_workers.size();
+		worker_index ++; 
+		worker_index = worker_index % tcp_workers.size();
 		return tcp_workers[worker_index];
 	}
 
@@ -354,8 +303,8 @@ private:
 	bool is_running = false;
 
 	std::vector<std::thread> listen_threads;
-	std::thread listen_thread;
-	std::unordered_map<uint32_t, ConnectionPtr> connection_map;
+ 
+
 	std::string listen_addr;
 	Factory *connection_factory = nullptr;
 
