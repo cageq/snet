@@ -45,6 +45,7 @@ public:
         {
             struct epoll_event event ={};
             //event.data.u64 = *((uint64_t *) &conn);
+			//when put into epoll, increase a ref count, avoid dangling pointer 
 			new (&event.data.u64)ConnectionPtr(conn); 
             event.events = evts;
             int ret = epoll_ctl(epoll_fd, EPOLL_CTL_ADD, conn->conn_sd, &event);
@@ -67,7 +68,6 @@ public:
             struct epoll_event event= {};
             event.events = evts;
             event.data.u64 = *((uint64_t *) &conn);
-			//new (&event.data.u64)ConnectionPtr(conn); 
             int ret = epoll_ctl(epoll_fd, EPOLL_CTL_MOD, conn->conn_sd, &event);
             if (ret == -1)
             {
