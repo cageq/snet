@@ -10,13 +10,14 @@
 #include <time.h>
 #include "tcp_factory.h"
 #include <vector> 
+#include "shared_ptr.h"
 #define MAX_WAIT_EVENT 128
 
 template <class Connection>
 class EpollWorker
 {
 public:
-    using ConnectionPtr = std::shared_ptr<Connection>;
+    using ConnectionPtr = SharedPtr<Connection>;
     using TcpFactoryPtr =   TcpFactory<Connection> *  ; 
     int32_t start(TcpFactoryPtr factory )
     {
@@ -38,12 +39,12 @@ public:
         return 0;
     }
 
-    bool add_event(Connection *conn, int32_t evts = EPOLLET | EPOLLIN | EPOLLOUT | EPOLLERR)
+    bool add_event(ConnectionPtr conn, int32_t evts = EPOLLET | EPOLLIN | EPOLLOUT | EPOLLERR)
     {
         if (conn->conn_sd > 0 )
         {
             struct epoll_event event ={};
-            event.data.ptr = conn;
+            event.data.u64 = *((uint64_t *) &conn);
             event.events = evts;
             int ret = epoll_ctl(epoll_fd, EPOLL_CTL_ADD, conn->conn_sd, &event);
             if (ret != 0)
@@ -58,13 +59,13 @@ public:
         return false;
     }
 
-    bool mod_event(Connection *conn, int evts = EPOLLET | EPOLLIN | EPOLLOUT | EPOLLERR)
+    bool mod_event(ConnectionPtr conn, int evts = EPOLLET | EPOLLIN | EPOLLOUT | EPOLLERR)
     {
         if (conn->conn_sd > 0 )
         {
             struct epoll_event event= {};
             event.events = evts;
-            event.data.ptr = conn;
+            event.data.u64 = *((uint64_t *) &conn);
             int ret = epoll_ctl(epoll_fd, EPOLL_CTL_MOD, conn->conn_sd, &event);
             if (ret == -1)
             {
@@ -79,7 +80,7 @@ public:
         return false;
     }
 
-    bool del_event(Connection *conn )
+    bool del_event(ConnectionPtr conn )
     {
         if (conn->conn_sd > 0 ){
       
@@ -170,7 +171,8 @@ public:
                 }
 
                 // TODO not safe,but efficiency 
-                Connection *conn = (Connection *)waitEvents[i].data.ptr;
+                ConnectionPtr conn = *((ConnectionPtr*) & waitEvents[i].data.u64);
+                //Connection *conn = (Connection *)waitEvents[i].data.ptr;
                 if (conn)
                 {
                     conn->process_event(waitEvents[i].events);

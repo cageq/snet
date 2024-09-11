@@ -26,7 +26,7 @@ class TcpServer : public HeapTimer<> , public Factory
 {
 
 public:
-	using ConnectionPtr = std::shared_ptr<Connection>;
+	using ConnectionPtr = SharedPtr<Connection>;
 	using TcpWorker = EpollWorker<Connection>;
 	using TcpWorkerPtr = std::shared_ptr<TcpWorker>;
 
@@ -179,7 +179,7 @@ private:
 					}
 					else
 					{
-						conn = std::make_shared<Connection>();
+						conn = create_shared<Connection>();
 					}
 					
 		 
@@ -193,7 +193,7 @@ private:
 
 					printf("accept new connection from %s:%u\n", remoteHost, remotePort);
 					conn->init(clientFd, remoteHost, remotePort, true );
-					worker->add_event(conn.get());			
+					worker->add_event(conn);			
 				}
 			}
 		}

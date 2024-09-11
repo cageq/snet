@@ -23,6 +23,7 @@
 
 #include "epoll_worker.h"
 #include "tcp_factory.h"
+#include "shared_ptr.h"
 
 
 inline void string_resize(std::string &str, std::size_t sz)
@@ -52,7 +53,7 @@ enum ConnEvent
 using TimerHandler = std::function<bool()>;
 
 template <class T>
-class TcpConnection : public std::enable_shared_from_this<T>
+class TcpConnection : public EnableSharedFromThis<T>
 {
 
 public:
@@ -84,7 +85,7 @@ public:
 		if (tcp_worker)
 		{
 			epoll_events |= EPOLLOUT; 
-			tcp_worker->mod_event(static_cast<T *>(this), epoll_events);
+			tcp_worker->mod_event(this->shared_from_this(), epoll_events);
 		}
 	}
 
@@ -318,7 +319,7 @@ public:
 
 			if (tcp_worker)
 			{
-				tcp_worker->del_event(static_cast<T *>(this));				
+				tcp_worker->del_event(this->shared_from_this());				
 			}
 			this->handle_event(CONN_EVENT_CLOSE);	
 			::close(conn_sd);			
@@ -419,10 +420,7 @@ protected:
 	int32_t mpush()
 	{
 		return 0;
-	}
-
-
-
+	} 
 
 	std::mutex  write_mutex;
 	std::string send_buffer;

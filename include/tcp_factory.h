@@ -1,13 +1,14 @@
 #pragma once
 #include <memory>
 #include <functional>
+#include "shared_ptr.h"
 
 template <class Connection>
 class TcpFactory
 {
 public:
 	virtual ~TcpFactory() {}
-	using ConnectionPtr = std::shared_ptr<Connection>;
+	using ConnectionPtr = SharedPtr<Connection>;
 	template <class... Args>
 	ConnectionPtr create(Args &&...args)
 	{
@@ -18,7 +19,7 @@ public:
 		}
 		else
 		{
-			conn = std::make_shared<Connection>(std::forward<Args>(args)...);
+			conn = create_shared<Connection>(std::forward<Args>(args)...);
 		}
 
 		this->on_create(conn->get_cid(), conn);
@@ -37,8 +38,6 @@ public:
 		}
 	}
 
-
-	 
 	virtual void on_create(uint64_t cid, ConnectionPtr conn)
 	{
 		add_connection(cid, conn);
@@ -48,8 +47,6 @@ public:
 	{
 		remove_connection(cid);
 	}
-
-
 	
 	void add_connection(uint64_t cid, ConnectionPtr conn)
 	{
@@ -77,6 +74,5 @@ public:
 	
 	std::function<ConnectionPtr()> creator;
 	std::function<void(uint64_t, ConnectionPtr)> releaser;
-
 	std::unordered_map<uint64_t, ConnectionPtr> connection_map;
 };

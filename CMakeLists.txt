@@ -40,4 +40,7 @@ add_executable(pipesrv src/pipesrv.cpp)
 
 add_executable(testptr src/testptr.cpp )
 
-add_executable(ptrdemo src/ptrdemo.cpp )
+
+add_executable(stdptrdemo src/stdptrdemo.cpp)
+
+#add_executable(ptrdemo src/ptrdemo.cpp )

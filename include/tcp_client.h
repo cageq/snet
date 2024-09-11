@@ -22,7 +22,7 @@ template <class Connection, class Factory = TcpFactory<Connection>>
 class TcpClient : public HeapTimer<>
 {
 public:
-  using ConnectionPtr = std::shared_ptr<Connection>;
+  using ConnectionPtr = SharedPtr<Connection>;
 
   using TcpWorker = EpollWorker<Connection>;
   using TcpWorkerPtr = std::shared_ptr<TcpWorker>;
@@ -68,14 +68,14 @@ public:
     }
     else
     {
-      conn = std::make_shared<Connection>(std::forward<Args>(args)...);
+      conn = create_shared<Connection>(std::forward<Args>(args)...);
     }
 
     int sockfd = socket(AF_INET, SOCK_STREAM, 0);
-    conn->tcp_worker = tcp_worker; 
+    conn->tcp_worker = tcp_worker;
     conn->init(sockfd, host, port, false);
     auto fd = conn->do_connect();
-    tcp_worker->add_event(conn.get());
+    tcp_worker->add_event(conn);
     connection_map[fd] = conn;
     return conn;
   }

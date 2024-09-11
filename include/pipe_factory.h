@@ -2,6 +2,7 @@
 
  
 #include "tcp_connection.h"
+#include "shared_ptr.h" 
 //#include "pipe_connection.h"
 
 
@@ -14,7 +15,7 @@ public:
   using UserSessionPtr = std::shared_ptr<UserSession>;
   using PipeTcpConnection = PipeConnection<UserSession>;
 
-  using PipeConnectionPtr = std::shared_ptr<PipeConnection<UserSession>>;
+  using PipeConnectionPtr = SharedPtr<PipeConnection<UserSession>>;
 
   virtual void on_create(uint64_t cid, PipeConnectionPtr conn) override {
     conn->pipe_factory = this; 

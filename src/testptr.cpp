@@ -16,6 +16,9 @@ class StdClass : public std::enable_shared_from_this<StdClass>
 class MyClass : public EnableSharedFromThis<MyClass>
 {
 public:
+    MyClass(){
+        printf("create MyClass\n"); 
+    }
     ~MyClass()
     {
         printf("destroy MyClass \n");
@@ -23,24 +26,36 @@ public:
     uint64_t index;
 };
 
+class HeClass {
+
+}; 
+
 int main(int argc, char *argv[])
 {
 
-     SharedPtr<MyClass> myClass  = create_shared<MyClass>();
+	SharedPtr<MyClass> myClass  = create_shared<MyClass>();
 
-    printf("shared ptr size %lu\n", sizeof(myClass));
-    printf("ref count %d\n", myClass.use_count());
+	printf("shared ptr size %lu\n", sizeof(myClass));
+	printf("ref count %d\n", myClass.use_count());
 
-    auto ptr2 = myClass;
+	auto ptr2 = myClass;
 
-    printf("ref count %d\n", myClass.use_count());
+	printf("ref count %d\n", myClass.use_count());
 
-    auto ptr3 = myClass->shared_from_this();
+	auto ptr3 = myClass->shared_from_this();
 
-    printf("ref count %d\n", myClass.use_count());
+	printf("ref count %d\n", myClass.use_count());
 
 
-    // std::shared_ptr<StdClass> stdClass = std::make_shared<StdClass>(); 
+//     MyClass theClass; 
+//     __enable_shared_from_this_with<MyClass>(&theClass); 
+
+
+//     HeClass heClass; 
+
+// __enable_shared_from_this_with<HeClass>(&heClass); 
+
+	// std::shared_ptr<StdClass> stdClass = std::make_shared<StdClass>(); 
     // auto ptr4 = stdClass->shared_from_this(); 
     //  printf("ref count %d\n", stdClass.use_count());
 }
