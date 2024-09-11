@@ -24,12 +24,12 @@
 
 #include "epoll_worker.h"
 #include "tcp_factory.h"
+#include "string_thief.h" 
 
-
-inline void string_resize(std::string &str, std::size_t sz)
-{
-	str.resize(sz);
-}
+//inline void string_resize(std::string &str, std::size_t sz)
+//{
+//	str.resize(sz);
+//}
 
 enum ConnStatus
 {
