@@ -140,7 +140,8 @@ public:
 
     void release( uint64_t cid , ConnectionPtr conn  ){
      
-        release_connections.push_back(conn); 
+        tcp_factory->remove_connection(conn->get_cid()); 
+        //release_connections.push_back(conn); 
     }
 
     void *run()

@@ -69,10 +69,12 @@ public:
 	TcpConnection(){		
 		conn_id = connection_index ++; 
 		send_buffer.reserve(kWriteBufferSize); 
-	};
+	}
+	
 
 	virtual ~TcpConnection()
 	{
+		printf("destroy tcp connection \n"); 
 	}
 
 	int32_t send(const char *data, uint32_t dataLen)
