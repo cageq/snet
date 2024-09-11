@@ -165,7 +165,6 @@ public:
     }
 
     // private:
-    RefCount<T> *ref_count = nullptr;
 
     void release()
     {
@@ -175,7 +174,15 @@ public:
             delete ref_count;
         }
     }
-
+	void release() const 
+    {
+        if (ref_count && ref_count->release_ref() == 0)
+        {
+            //printf("release from sheard ptr %d\n", ref_count->get_count());
+            delete ref_count;
+        }
+    }
+    mutable RefCount<T> *ref_count = nullptr;
     friend class WeakPtr<T>;
 };
 
@@ -287,7 +294,7 @@ public:
     mutable WeakPtr<T> weak_this;
 };
 
-template <typename T, typename R = typename std::remove_cv<T>::type>
+template <typename T, typename R >
 typename std::enable_if<__has_shared_from_this_base<R>::value>::type
 __enable_shared_from_this_with(T *p, RefCount<T> *ref)
 {

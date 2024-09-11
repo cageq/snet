@@ -39,12 +39,13 @@ public:
         return 0;
     }
 
-    bool add_event(ConnectionPtr conn, int32_t evts = EPOLLET | EPOLLIN | EPOLLOUT | EPOLLERR)
+    bool add_event(const ConnectionPtr & conn, int32_t evts = EPOLLET | EPOLLIN | EPOLLOUT | EPOLLERR)
     {
         if (conn->conn_sd > 0 )
         {
             struct epoll_event event ={};
-            event.data.u64 = *((uint64_t *) &conn);
+            //event.data.u64 = *((uint64_t *) &conn);
+			new (&event.data.u64)ConnectionPtr(conn); 
             event.events = evts;
             int ret = epoll_ctl(epoll_fd, EPOLL_CTL_ADD, conn->conn_sd, &event);
             if (ret != 0)
@@ -59,13 +60,14 @@ public:
         return false;
     }
 
-    bool mod_event(ConnectionPtr conn, int evts = EPOLLET | EPOLLIN | EPOLLOUT | EPOLLERR)
+    bool mod_event(const ConnectionPtr& conn, int evts = EPOLLET | EPOLLIN | EPOLLOUT | EPOLLERR)
     {
         if (conn->conn_sd > 0 )
         {
             struct epoll_event event= {};
             event.events = evts;
             event.data.u64 = *((uint64_t *) &conn);
+			//new (&event.data.u64)ConnectionPtr(conn); 
             int ret = epoll_ctl(epoll_fd, EPOLL_CTL_MOD, conn->conn_sd, &event);
             if (ret == -1)
             {
@@ -80,7 +82,7 @@ public:
         return false;
     }
 
-    bool del_event(ConnectionPtr conn )
+    bool del_event(const ConnectionPtr  & conn )
     {
         if (conn->conn_sd > 0 ){
       
@@ -91,7 +93,8 @@ public:
             }
             else
             {
-                printf("del epoll event success %d\n", conn->conn_sd);
+                printf("del epoll event success %d, use count %d\n", conn->conn_sd,conn.use_count() );
+				conn.release(); 
             }
             return ret >= 0;
         }
@@ -112,9 +115,7 @@ public:
             return false;
         }
 
-        struct epoll_event event
-        {
-        };
+        struct epoll_event event { };
         event.data.fd = timer_fd;
         event.events = EPOLLIN;
         if (mod)
@@ -172,11 +173,13 @@ public:
                 }
 
                 // TODO not safe,but efficiency 
-                ConnectionPtr conn = *((ConnectionPtr*) & waitEvents[i].data.u64);
+                ConnectionPtr &conn = *((ConnectionPtr*) & waitEvents[i].data.u64);
+				//auto conn = (*new (&waitEvents[i].data.u64)ConnectionPtr()); 
                 //Connection *conn = (Connection *)waitEvents[i].data.ptr;
                 if (conn)
                 {
                     conn->process_event(waitEvents[i].events);
+					
                 }
                 else
                 {

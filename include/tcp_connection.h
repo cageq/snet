@@ -378,10 +378,10 @@ public:
 
 	ConnStatus status = ConnStatus::CONN_IDLE;
 	TcpWorkerPtr tcp_worker;
-	int conn_sd = -1;
-	inline uint64_t get_cid(){		
+	inline uint64_t get_cid()const {		
 		return conn_id; 
 	}
+	int conn_sd = -1;
 protected:
 	template <typename P>
 	inline uint32_t write_data(const P &data)
