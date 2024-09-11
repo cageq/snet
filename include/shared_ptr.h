@@ -190,24 +190,30 @@ template <typename T>
 class EnableSharedFromThis {
 public:
 
+ 
+
+    SharedPtr<const T> shared_from_this() const {
+        auto sp = weak_from_this().lock();
+        if (!sp) {
+            throw std::bad_weak_ptr();
+        }
+        return sp;
+    }
 
 
     SharedPtr<T> shared_from_this() {
-        // 检查 weak_ptr 是否为空
-        if (auto sp = weak_this.lock()) {
-            return sp;
-        } else {
+        auto sp = weak_from_this().lock();
+        if (!sp) {
             throw std::bad_weak_ptr();
         }
+        return sp;
     }
 
-    SharedPtr<const T> shared_from_this() const {
-        if (auto sp = weak_this.lock()) {
-            return sp;
-        } else {
-             throw std::bad_weak_ptr();
-        }
+    WeakPtr<T> weak_from_this() const {
+        return WeakPtr<T>( weak_this.lock());
     }
+
+
 
 protected:
  

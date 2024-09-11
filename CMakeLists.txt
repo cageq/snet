@@ -39,3 +39,5 @@ add_executable(pipesrv src/pipesrv.cpp)
 
 
 add_executable(testptr src/testptr.cpp )
+
+add_executable(ptrdemo src/ptrdemo.cpp )
