@@ -4,7 +4,7 @@
 class UserSession : public TcpConnection<UserSession>
 {
 public:
-  virtual void handle_event(uint32_t evt)
+  virtual void handle_event(uint32_t evt) override 
   {
 
     printf("handle event in session  %d\n", evt);

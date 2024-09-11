@@ -123,7 +123,7 @@ public:
 	}
 	 
 
-	virtual int32_t demarcate_message(char *data, uint32_t len)
+	virtual int32_t demarcate_message(char *data, uint32_t len) 
 	{
 		return len;
 	}
