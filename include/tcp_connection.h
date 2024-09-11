@@ -161,6 +161,7 @@ public:
 
 	void on_ready()
 	{
+		status = ConnStatus::CONN_OPEN;	
 		this->set_tcpdelay();
 		this->handle_event(CONN_EVENT_OPEN);
 	}
@@ -340,7 +341,7 @@ public:
 
 		if (status == ConnStatus::CONN_IDLE)
 		{
-			status = ConnStatus::CONN_OPEN;			
+					
 			this->on_ready();
 		}
 
