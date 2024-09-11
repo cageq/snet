@@ -83,6 +83,11 @@ template <typename T>
 class SharedPtr
 {
 public:
+
+	//forbiden to create from raw pointer 
+	SharedPtr(T *) = delete; 
+	SharedPtr(const T *) = delete; 
+
     template <class... Args>
     SharedPtr(Args... args) : ref_count(new RefCount<T>(args...))
     {

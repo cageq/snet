@@ -32,6 +32,10 @@ class HeClass {
 
 int main(int argc, char *argv[])
 {
+	//SharedPtr<MyClass> sPtr(new MyClass()); 
+	//SharedPtr<MyClass> sPtr = new MyClass(); 
+
+
 
 	SharedPtr<MyClass> myClass  = create_shared<MyClass>();
 
