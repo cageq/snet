@@ -303,7 +303,7 @@ __enable_shared_from_this_with(T *p, RefCount<T> *ref)
 }
 
 template <class T, class... Args>
-SharedPtr<T> create_shared(Args... args)
+SharedPtr<T> create_shared(Args && ... args)
 {
-    return SharedPtr<T>(args...);
+    return std::move(SharedPtr<T>(std::forward<Args>(args)...)); 
 }

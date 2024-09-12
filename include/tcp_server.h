@@ -30,7 +30,7 @@ public:
 	using TcpWorker = EpollWorker<Connection>;
 	using TcpWorkerPtr = std::shared_ptr<TcpWorker>;
 
-	TcpServer(Factory *factory = nullptr, int32_t workers = 4) : connection_factory(factory)
+	TcpServer(Factory *factory = nullptr, int32_t workers = 1) : connection_factory(factory)
 	{ 
 		if (connection_factory == nullptr){
 			connection_factory = this; 

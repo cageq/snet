@@ -167,7 +167,9 @@ public:
                 ConnectionPtr &conn = *((ConnectionPtr*) pObj);
                 if (conn)
                 {
+					printf("process event %d\n", waitEvents[i].events); 
                     conn->process_event(waitEvents[i].events);
+					printf("after process event\n"); 
                 }
                 else
                 {
