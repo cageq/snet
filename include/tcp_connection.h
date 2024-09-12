@@ -126,7 +126,7 @@ public:
 	}
 	 
 
-	virtual int32_t demarcate_message(char *data, uint32_t len) 
+	virtual int32_t handle_package(char *data, uint32_t len) 
 	{
 		return len;
 	}
@@ -226,10 +226,8 @@ public:
 			int rc = ::send(conn_sd, cache_buffer.data(), cache_buffer.size(), 0);				
 			if (rc < 0)
 			{
-				if (errno == EINTR){
-					return 0; 
-				}
-				if (errno == EAGAIN || errno == EWOULDBLOCK){
+				
+				if (errno == EINTR || errno == EAGAIN || errno == EWOULDBLOCK){
 					do_send(); 
 				}else {
 					perror("send failed");
@@ -259,10 +257,7 @@ public:
 			int rc = ::recv(conn_sd, &read_buffer[read_buffer_pos], bufSize, 0);
 			if (rc < 0)
 			{
-				if (errno == EINTR){
-					return 0; 
-				}
-				if (errno == EAGAIN || errno == EWOULDBLOCK){
+ 				if (errno == EINTR || errno == EAGAIN || errno == EWOULDBLOCK){
 					do_read(); 
 				}
 				else 
@@ -295,7 +290,7 @@ public:
 		while (readPos < read_buffer_pos)
 		{
 			int32_t pkgLen =
-				demarcate_message(&read_buffer[readPos], read_buffer_pos);
+				handle_package(&read_buffer[readPos], read_buffer_pos);
 
 			if (pkgLen <= 0 || pkgLen > read_buffer_pos - readPos)
 			{

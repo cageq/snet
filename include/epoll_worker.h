@@ -144,7 +144,7 @@ public:
         return true;
     }
 
-    void *run()
+    void run()
     {
         struct epoll_event waitEvents[MAX_WAIT_EVENT];
         while (is_running)
@@ -183,8 +183,7 @@ public:
 
         } // end while
 
-        printf("quit process thread");
-        return 0;
+        printf("quit process thread");        
     }
 
     int timer_fd = -1 ;
