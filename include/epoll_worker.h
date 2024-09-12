@@ -152,8 +152,11 @@ public:
             int ret = epoll_wait(epoll_fd, waitEvents, MAX_WAIT_EVENT, -1);
             if (ret < 0)
             {
+                if (errno == EINTR){
+				    continue;
+				}
                 printf("wait error , errno is %d\n", errno);
-                continue;
+                return ;
             }
 
             for (int i = 0; i < ret; i++)

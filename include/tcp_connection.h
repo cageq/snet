@@ -226,6 +226,9 @@ public:
 			int rc = ::send(conn_sd, cache_buffer.data(), cache_buffer.size(), 0);				
 			if (rc < 0)
 			{
+				if (errno == EINTR){
+					return 0; 
+				}
 				if (errno == EAGAIN || errno == EWOULDBLOCK){
 					do_send(); 
 				}else {
@@ -256,6 +259,9 @@ public:
 			int rc = ::recv(conn_sd, &read_buffer[read_buffer_pos], bufSize, 0);
 			if (rc < 0)
 			{
+				if (errno == EINTR){
+					return 0; 
+				}
 				if (errno == EAGAIN || errno == EWOULDBLOCK){
 					do_read(); 
 				}
