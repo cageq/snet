@@ -354,14 +354,14 @@ public:
 			}			
 		}
 
-		if (EPOLLERR == (evts & EPOLLERR) )
+		if (EPOLLERR == (evts & EPOLLERR) || status == CONN_CLOSING )
 		{			
 			this->do_close();	
 		}
 
-		if (status == CONN_CLOSING){
-			this->do_close();
-		}
+		//if (status == CONN_CLOSING){
+		//	this->do_close();
+		//}
 	}
 
 	char read_buffer[kReadBufferSize];
