@@ -169,8 +169,7 @@ public:
 				void * pObj = (void *) &waitEvents[i].data.u64; 
                 ConnectionPtr &conn = *((ConnectionPtr*) pObj);
                 if (conn)
-                {
-					printf("process event %d\n", waitEvents[i].events); 
+                {					
                     conn->process_event(waitEvents[i].events);					
                 }
                 else

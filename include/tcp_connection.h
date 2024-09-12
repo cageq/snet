@@ -328,12 +328,7 @@ public:
 			if (tcp_worker)
 			{			
 				tcp_worker->del_event(this->shared_from_this());							
-			}
-			// if (conn_sd > 0)
-			// {				
-			// 	conn_sd = -1;
-			// }
-			
+			}			
 		}
 	}
 
@@ -347,11 +342,9 @@ public:
 
 		if (EPOLLIN == (evts & EPOLLIN))
 		{		
-			int ret = this->do_read();
-			if (ret > 0)
-			{
-		
-			}	 		
+			if (is_open()){
+				this->do_read();	 		
+			}
 		}
 
 		if (EPOLLOUT == (evts & EPOLLOUT))
