@@ -90,7 +90,7 @@ public:
             int ret = epoll_ctl(epoll_fd, EPOLL_CTL_DEL, conn->conn_sd, nullptr);
             if (ret == 0)
             {
-                printf("del epoll event success %d, use count %d\n", conn->conn_sd,conn.use_count() );
+                printf("del event success %d, use count %d\n", conn->conn_sd,conn.use_count() );
 				tcp_factory->remove_connection(conn->get_cid()); 
 				conn.release(); 
             }

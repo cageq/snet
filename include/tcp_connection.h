@@ -319,12 +319,12 @@ public:
 		{
 			status = ConnStatus::CONN_CLOSING;	
 
+			this->handle_event(CONN_EVENT_CLOSE);	
 			if (tcp_worker)
 			{
 				tcp_worker->del_event(this->shared_from_this());				
+			//::close(conn_sd);			
 			}
-			this->handle_event(CONN_EVENT_CLOSE);	
-			::close(conn_sd);			
 		}else if (status == ConnStatus::CONN_CLOSING){
 			
 			if (conn_sd > 0)
