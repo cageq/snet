@@ -12,6 +12,12 @@ class WeakPtr;
 template <typename T>
 class EnableSharedFromThis;
 
+
+template <class T> 
+class SharedPtrAllocater{
+
+}; 
+
 template <class T>
 class RefCount;
 
