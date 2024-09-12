@@ -325,7 +325,6 @@ public:
 			}
 			this->handle_event(CONN_EVENT_CLOSE);	
 			::close(conn_sd);			
-			tcp_worker->release(conn_id, this->shared_from_this()); 
 		}else if (status == ConnStatus::CONN_CLOSING){
 			
 			if (conn_sd > 0)
@@ -333,13 +332,11 @@ public:
 				conn_sd = -1;
 			}
 			status =  ConnStatus::CONN_CLOSED; 
-			
 		}
 	}
 
 	void process_event(int32_t evts)
 	{
-
 		if (status == ConnStatus::CONN_IDLE)
 		{
 			status = ConnStatus::CONN_OPEN;			

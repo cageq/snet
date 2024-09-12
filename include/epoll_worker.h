@@ -91,6 +91,7 @@ public:
             if (ret == 0)
             {
                 printf("del epoll event success %d, use count %d\n", conn->conn_sd,conn.use_count() );
+				tcp_factory->remove_connection(conn->get_cid()); 
 				conn.release(); 
             }
             else
@@ -140,12 +141,6 @@ public:
         return true;
     }
 
-    void release( uint64_t cid , ConnectionPtr conn  ){
-     
-        tcp_factory->remove_connection(conn->get_cid()); 
-        //release_connections.push_back(conn); 
-    }
-
     void *run()
     {
         struct epoll_event waitEvents[MAX_WAIT_EVENT];
@@ -164,23 +159,15 @@ public:
                 if (evfd == timer_fd)
                 {
                     add_timer(true);
-
-                    for(auto conn : release_connections){
-                        conn->do_close(); 
-                        tcp_factory->remove_connection(conn->get_cid());                       
-                    }
-                    release_connections.clear(); 
                     continue;
                 }
 
-                // TODO not safe,but efficiency 
-                ConnectionPtr &conn = *((ConnectionPtr*) & waitEvents[i].data.u64);
-				//auto conn = (*new (&waitEvents[i].data.u64)ConnectionPtr()); 
-                //Connection *conn = (Connection *)waitEvents[i].data.ptr;
+				//get rid of compiler warning 
+				void * pObj = (void *) &waitEvents[i].data.u64; 
+                ConnectionPtr &conn = *((ConnectionPtr*) pObj);
                 if (conn)
                 {
                     conn->process_event(waitEvents[i].events);
-					
                 }
                 else
                 {
@@ -194,7 +181,6 @@ public:
         return 0;
     }
 
-    std::vector<ConnectionPtr > release_connections; 
     int timer_fd = -1 ;
     bool is_running = false;
     int epoll_fd = -1 ;
