@@ -32,9 +32,9 @@ public:
 
         is_running = true;
         epoll_thread = std::thread([this] {
-                                       add_timer();
-                                       run();
-                                   });
+						  add_timer();
+						  run();
+                      });
     
         return 0;
     }
@@ -53,6 +53,7 @@ public:
             {
                 printf("add conn to worker failed\n");
                 ::close(conn->conn_sd);
+				conn.release(); 
                 return false;
             }
 
@@ -87,14 +88,14 @@ public:
         if (conn->conn_sd > 0 ){
       
             int ret = epoll_ctl(epoll_fd, EPOLL_CTL_DEL, conn->conn_sd, nullptr);
-            if (ret == -1)
-            {
-                printf("del epoll event failed\n");
-            }
-            else
+            if (ret == 0)
             {
                 printf("del epoll event success %d, use count %d\n", conn->conn_sd,conn.use_count() );
 				conn.release(); 
+            }
+            else
+            {
+                printf("del epoll event failed , errno %d\n", errno);
             }
             return ret >= 0;
         }
