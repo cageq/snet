@@ -12,11 +12,8 @@ class WeakPtr;
 template <typename T>
 class EnableSharedFromThis;
 
-
 template <class T> 
-struct  SharedPtrAllocater{
-
-}; 
+struct  SharedPtrAllocater ; 
 
 template <class T>
 class RefCount;
@@ -97,21 +94,6 @@ public:
     SharedPtr():ref_count(nullptr){
     } 
 
-    template <class... Args>
-    SharedPtr init (Args &&... args)   
-    {
-        ref_count = (new RefCount<T>(std::forward<Args>(args)...)); 
-        ref_count->add_ref();
-        return *this; 
-    }
-
-    template <class... Args>
-    SharedPtr init (Args &&... args)  const 
-    {
-        ref_count = (new RefCount<T>(std::forward<Args>(args)...)); 
-        ref_count->add_ref();
-        return *this; 
-    }
 
     SharedPtr(const SharedPtr &other) : ref_count(other.ref_count)
     {
@@ -182,10 +164,7 @@ public:
     {
         return ref_count ? ref_count->get_count() : 0;
     }
-
-    // private:
-
-    void release()
+   void release()
     {
         if (ref_count && ref_count->release_ref() == 0)
         {
@@ -193,15 +172,34 @@ public:
             delete ref_count;
         }
     }
-	// void release() const 
-    // {
-    //     if (ref_count && ref_count->release_ref() == 0)
-    //     {
-    //         printf("release from sheard ptr %d\n", ref_count->get_count());
-    //         delete ref_count;
-    //     }
-    // }
+	void release() const 
+    {
+        if (ref_count && ref_count->release_ref() == 0)
+        {
+            printf("release from sheard ptr %d\n", ref_count->get_count());
+            delete ref_count;
+        }
+    }
+private:
+
+    template <class... Args>
+    SharedPtr init (Args &&... args)   
+    {
+        ref_count = (new RefCount<T>(std::forward<Args>(args)...)); 
+        ref_count->add_ref();
+        return *this; 
+    }
+
+    template <class... Args>
+    SharedPtr init (Args &&... args)  const 
+    {
+        ref_count = (new RefCount<T>(std::forward<Args>(args)...)); 
+        ref_count->add_ref();
+        return *this; 
+    }
+
     mutable RefCount<T> *ref_count = nullptr;
+    friend class SharedPtrAllocater<T>; 
     friend class WeakPtr<T>;
 };
 
@@ -313,6 +311,16 @@ public:
     mutable WeakPtr<T> weak_this;
 };
 
+
+
+template <class T> 
+struct  SharedPtrAllocater{
+    template <class ... Args> 
+        SharedPtr<T> operator ()(Args && ... args){
+            return SharedPtr<T>().init(std::forward<Args>(args)...); 
+        }
+}; 
+
 template <typename T, typename R >
 typename std::enable_if<__has_shared_from_this_base<R>::value>::type
 __enable_shared_from_this_with(T *p, RefCount<T> *ref)
@@ -324,5 +332,5 @@ __enable_shared_from_this_with(T *p, RefCount<T> *ref)
 template <class T, class... Args>
 SharedPtr<T> create_shared(Args && ... args)
 {
-    return  SharedPtr<T>().init(std::forward<Args>(args)...); 
+    return  SharedPtrAllocater<T>()(std::forward<Args>(args)...)  ; 
 }
