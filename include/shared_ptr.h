@@ -14,7 +14,7 @@ class EnableSharedFromThis;
 
 
 template <class T> 
-class SharedPtrAllocater{
+struct  SharedPtrAllocater{
 
 }; 
 

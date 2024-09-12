@@ -69,13 +69,15 @@ public:
 	TcpConnection(){		
 		conn_id = connection_index ++; 
 		send_buffer.reserve(kWriteBufferSize); 
-		printf("create tcp connection \n"); 
 	}
 	
 
 	virtual ~TcpConnection()
 	{
 		printf("destroy tcp connection \n"); 
+		if (status == CONN_CLOSING){
+			do_close(); 
+		}
 	}
 
 	int32_t send(const char *data, uint32_t dataLen)
@@ -358,10 +360,7 @@ public:
 		{			
 			this->do_close();	
 		}
-
-		//if (status == CONN_CLOSING){
-		//	this->do_close();
-		//}
+ 
 	}
 
 	char read_buffer[kReadBufferSize];
