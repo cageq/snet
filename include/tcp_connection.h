@@ -69,6 +69,7 @@ public:
 	TcpConnection(){		
 		conn_id = connection_index ++; 
 		send_buffer.reserve(kWriteBufferSize); 
+		printf("create tcp connection \n"); 
 	}
 	
 
@@ -320,18 +321,19 @@ public:
 			status = ConnStatus::CONN_CLOSING;	
 
 			this->handle_event(CONN_EVENT_CLOSE);	
-			if (tcp_worker)
-			{
-				tcp_worker->del_event(this->shared_from_this());				
-			//::close(conn_sd);			
-			}
+			
 		}else if (status == ConnStatus::CONN_CLOSING){
 			
-			if (conn_sd > 0)
-			{				
-				conn_sd = -1;
-			}
 			status =  ConnStatus::CONN_CLOSED; 
+			if (tcp_worker)
+			{			
+				tcp_worker->del_event(this->shared_from_this());							
+			}
+			// if (conn_sd > 0)
+			// {				
+			// 	conn_sd = -1;
+			// }
+			
 		}
 	}
 
@@ -344,12 +346,11 @@ public:
 		}
 
 		if (EPOLLIN == (evts & EPOLLIN))
-		{
+		{		
 			int ret = this->do_read();
 			if (ret > 0)
 			{
-				//epoll_events |=   EPOLLIN; 
-				//tcp_worker->mod_event(static_cast<T *>(this), epoll_events );
+		
 			}	 		
 		}
 
@@ -360,9 +361,12 @@ public:
 			}			
 		}
 
-		if (EPOLLERR == (evts & EPOLLERR))
-		{
-			printf("EPOLLERROR event %d ", evts);
+		if (EPOLLERR == (evts & EPOLLERR) )
+		{			
+			this->do_close();	
+		}
+
+		if (status == CONN_CLOSING){
 			this->do_close();
 		}
 	}

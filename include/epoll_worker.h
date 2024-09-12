@@ -39,7 +39,7 @@ public:
         return 0;
     }
 
-    bool add_event(const ConnectionPtr & conn, int32_t evts = EPOLLET | EPOLLIN | EPOLLOUT | EPOLLERR)
+    bool add_event(  ConnectionPtr  conn, int32_t evts = EPOLLET | EPOLLIN | EPOLLOUT | EPOLLERR)
     {
         if (conn->conn_sd > 0 )
         {
@@ -53,6 +53,7 @@ public:
             {
                 printf("add conn to worker failed\n");
                 ::close(conn->conn_sd);
+                conn->conn_sd = -1; 
 				conn.release(); 
                 return false;
             }
@@ -83,16 +84,18 @@ public:
         return false;
     }
 
-    bool del_event(const ConnectionPtr  & conn )
+    bool del_event( ConnectionPtr   conn )
     {
         if (conn->conn_sd > 0 ){
       
             int ret = epoll_ctl(epoll_fd, EPOLL_CTL_DEL, conn->conn_sd, nullptr);
             if (ret == 0)
             {
-                printf("del event success %d, use count %d\n", conn->conn_sd,conn.use_count() );
+                ::close(conn->conn_sd);		
+                conn->conn_sd = -1; 
 				tcp_factory->remove_connection(conn->get_cid()); 
-				conn.release(); 
+                //printf("del event success %d, use count %d\n", conn->conn_sd,conn.use_count() );
+				conn.release();                 
             }
             else
             {
@@ -168,8 +171,7 @@ public:
                 if (conn)
                 {
 					printf("process event %d\n", waitEvents[i].events); 
-                    conn->process_event(waitEvents[i].events);
-					printf("after process event\n"); 
+                    conn->process_event(waitEvents[i].events);					
                 }
                 else
                 {

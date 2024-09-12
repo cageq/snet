@@ -18,8 +18,8 @@ endif()
 include_directories(include)
 
 
-add_executable(democlient src/democlient.cpp)
-add_executable(demoserver src/demoserver.cpp)
+add_executable(tcpclient src/tcpclient.cpp)
+add_executable(tcpserver src/tcpserver.cpp)
 
 
 add_executable(pipecli src/pipecli.cpp)
