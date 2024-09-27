@@ -38,12 +38,13 @@ public:
         return 0;
     }
 
-    bool add_event(Connection *conn, int32_t evts = EPOLLET | EPOLLIN | EPOLLOUT | EPOLLERR)
+    bool add_event(ConnectionPtr conn, int32_t evts = EPOLLET | EPOLLIN | EPOLLOUT | EPOLLERR)
     {
         if (conn->conn_sd > 0 )
         {
             struct epoll_event event ={};
-            event.data.ptr = conn;
+            event.data.ptr = conn.get();
+            //conn.use_count() ++; 
             event.events = evts;
             int ret = epoll_ctl(epoll_fd, EPOLL_CTL_ADD, conn->conn_sd, &event);
             if (ret != 0)

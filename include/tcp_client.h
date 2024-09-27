@@ -75,7 +75,7 @@ public:
     conn->tcp_worker = tcp_worker; 
     conn->init(sockfd, host, port, false);
     auto fd = conn->do_connect();
-    tcp_worker->add_event(conn.get());
+    tcp_worker->add_event(conn);
     connection_map[fd] = conn;
     return conn;
   }
