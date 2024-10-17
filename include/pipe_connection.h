@@ -44,7 +44,7 @@ namespace snet
       return sizeof(PipeMsgHead) + msg->length;
     }
 
-    virtual void handle_event(NetEvent evt) override
+    virtual bool handle_event(NetEvent evt) override
     {
       printf("handle pipe connection %d\n", evt);
       if (evt == NetEvent::EVT_CONNECT)

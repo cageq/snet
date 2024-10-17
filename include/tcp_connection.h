@@ -132,7 +132,7 @@ namespace snet
 
 		virtual int32_t handle_data(char *data, uint32_t len) { return len; }
 
-		virtual void handle_event(NetEvent  evt) {}
+		virtual bool handle_event(NetEvent  evt) {}
 
 		bool is_open()
 		{

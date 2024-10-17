@@ -4,7 +4,7 @@ using namespace snet;
 class UserSession : public TcpConnection<UserSession>
 {
 public:
-  virtual void handle_event(NetEvent evt) override
+  virtual bool handle_event(NetEvent evt) override
   {
 
     printf("handle event in session  %d\n", evt);
