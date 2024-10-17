@@ -85,7 +85,7 @@ namespace snet
     }
 
     void add_connection(int sd, ConnectionPtr conn) { connection_factory->add_connection(sd, conn); }
-    int32_t remove_connection(int sd) { connection_factory->remove_connection(sd); }
+    int32_t remove_connection(int sd) { connection_factory->remove_connection(sd); return 0;  }
 
     ConnectionPtr find_connection(int sd)
     {
