@@ -85,6 +85,10 @@ namespace snet
 			}
 		}
 
+	    inline void enable_reconnect(){      
+			need_reconnect = true; 
+    	}
+
 		void set_tcpdelay()
 		{
 			int yes = 1;

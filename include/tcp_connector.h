@@ -68,6 +68,10 @@ namespace snet
       }
     }
 
+    void enable_reconnect(){
+      
+    }
+
     ConnectionPtr add_connection(const std::string &url ){
       NetUrl netUrl ;
       netUrl.parse(url);
