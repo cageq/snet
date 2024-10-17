@@ -23,7 +23,7 @@ namespace snet
 {
 
 	template <class Connection, class Factory = TcpFactory<Connection>>
-	class TcpListener : public TcpFactory<Connection>, public EpollEventHandler
+	class TcpListener : public Factory, public EpollEventHandler
 	{
 	public:
 		using ConnectionPtr = std::shared_ptr<Connection>;
