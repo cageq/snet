@@ -2,6 +2,9 @@
 #include "pipe_factory.h"
 #include "tcp_connection.h"
 
+
+namespace snet
+{
 enum PipeMsgType
 {
   PIPE_MSG_SHAKE_HAND = 1,
@@ -10,136 +13,132 @@ enum PipeMsgType
   PIPE_MSG_ACK,
 };
 
-
-namespace snet
-{
-
-struct PipeMsgHead
-{
-  uint32_t length;
-  uint32_t type;
-  uint64_t data; // user data
-  char body[0];
-};
-
-template <class UserSession>
-class PipeConnection : public TcpConnection<PipeConnection<UserSession>>
-{
-public:
-  using Parent = TcpConnection<PipeConnection<UserSession>>;
-  using UserSessionPtr = std::shared_ptr<UserSession>;
-
-  PipeConnection(UserSessionPtr session = nullptr, PipeFactory<UserSession> *factroy = nullptr) : user_session(session), pipe_factory(factroy) {}
-
-  virtual int32_t demarcate_message(char *data, uint32_t len)
+  struct PipeMsgHead
   {
-    if (len < sizeof(PipeMsgHead))
+    uint32_t length;
+    uint32_t type;
+    uint64_t data; // user data
+    char body[0];
+  };
+
+  template <class UserSession>
+  class PipeConnection : public TcpConnection<PipeConnection<UserSession>>
+  {
+  public:
+    using Parent = TcpConnection<PipeConnection<UserSession>>;
+    using UserSessionPtr = std::shared_ptr<UserSession>;
+
+    PipeConnection(UserSessionPtr session = nullptr, PipeFactory<UserSession> *factroy = nullptr) : user_session(session), pipe_factory(factroy) {}
+
+    virtual int32_t demarcate_message(char *data, uint32_t len)
     {
-      return 0;
+      if (len < sizeof(PipeMsgHead))
+      {
+        return 0;
+      }
+
+      PipeMsgHead *msg = (PipeMsgHead *)data;
+      if (msg->length + sizeof(PipeMsgHead) > len)
+      {
+        return 0;
+      }
+      return sizeof(PipeMsgHead) + msg->length;
     }
 
-    PipeMsgHead *msg = (PipeMsgHead *)data;
-    if (msg->length + sizeof(PipeMsgHead) > len)
+    virtual void handle_event(uint32_t evt) override
     {
-      return 0;
-    }
-    return sizeof(PipeMsgHead) + msg->length;
-  }
-
-  virtual void handle_event(uint32_t evt) override
-  {
-    printf("handle pipe connection %d\n", evt);
-    if (evt == CONN_EVENT_OPEN)
-    {
-
-      if (!Parent::is_passive)
+      printf("handle pipe connection %d\n", evt);
+      if (evt == CONN_EVENT_OPEN)
       {
-        this->send_shakehand(this->user_session->pipe_id);
-      }
-      else
-      {
+
+        if (!Parent::is_passive)
+        {
+          this->send_shakehand(this->user_session->pipe_id);
+        }
+        else
+        {
+        }
       }
     }
-  }
 
-  int32_t send_heartbeat(const std::string &msg = "")
-  {
-    PipeMsgHead head{static_cast<uint32_t>(msg.length()), PIPE_MSG_HEART_BEAT,
-                     0};
-    return Parent::msend(head, msg);
-  }
-
-  void send_shakehand(const std::string &pipeId)
-  {
-    PipeMsgHead shakeMsg{static_cast<uint32_t>(pipeId.length()), PIPE_MSG_SHAKE_HAND, 0};
-    this->msend(shakeMsg, pipeId);
-  }
-
-  virtual int32_t handle_data(char *data, uint32_t len) override
-  {
-    printf("handle data length %d\n", len);
-    PipeMsgHead *msg = (PipeMsgHead *)data;
-    if (msg->type == PIPE_MSG_SHAKE_HAND)
+    int32_t send_heartbeat(const std::string &msg = "")
     {
-      if (Parent::is_passive)
-      { // server side
-        process_server_handshake(msg);
-      }
-      else
+      PipeMsgHead head{static_cast<uint32_t>(msg.length()), PIPE_MSG_HEART_BEAT,
+                       0};
+      return Parent::msend(head, msg);
+    }
+
+    void send_shakehand(const std::string &pipeId)
+    {
+      PipeMsgHead shakeMsg{static_cast<uint32_t>(pipeId.length()), PIPE_MSG_SHAKE_HAND, 0};
+      this->msend(shakeMsg, pipeId);
+    }
+
+    virtual int32_t handle_data(char *data, uint32_t len) override
+    {
+      printf("handle data length %d\n", len);
+      PipeMsgHead *msg = (PipeMsgHead *)data;
+      if (msg->type == PIPE_MSG_SHAKE_HAND)
       {
-        process_client_handshake(msg);
+        if (Parent::is_passive)
+        { // server side
+          process_server_handshake(msg);
+        }
+        else
+        {
+          process_client_handshake(msg);
+        }
+        return len;
       }
+      else if (msg->type == PIPE_MSG_HEART_BEAT)
+      {
+        if (Parent::is_passive)
+        {
+          this->send_heartbeat();
+        }
+        return len;
+      }
+
+      user_session->handle_message(msg->body, msg->length, msg->data);
       return len;
     }
-    else if (msg->type == PIPE_MSG_HEART_BEAT)
+
+    void process_client_handshake(PipeMsgHead *msg)
     {
-      if (Parent::is_passive)
+      if (msg->length > 0)
       {
-        this->send_heartbeat();
+        std::string pipeId = std::string((const char *)msg->body, msg->length);
+        if (user_session)
+        {
+          user_session->on_ready();
+        }
       }
-      return len;
     }
 
-    user_session->handle_message(msg->body, msg->length, msg->data);
-    return len;
-  }
+    void process_server_handshake(PipeMsgHead *msg);
+    UserSessionPtr user_session;
+    PipeFactory<UserSession> *pipe_factory = nullptr;
+  };
 
-  void process_client_handshake(PipeMsgHead *msg)
+  template <class UserSession>
+  void PipeConnection<UserSession>::process_server_handshake(PipeMsgHead *msg)
   {
     if (msg->length > 0)
     {
       std::string pipeId = std::string((const char *)msg->body, msg->length);
-      if (user_session)
+
+      auto session = pipe_factory->find_user_session(pipeId);
+      if (session)
       {
-        user_session->on_ready();
+        session->on_ready();
+        session->handle_event(1);
       }
+      else
+      {
+        printf("not found pipe id %s\n", pipeId.c_str());
+      }
+      this->send_shakehand(pipeId);
     }
   }
-
-  void process_server_handshake(PipeMsgHead *msg);
-  UserSessionPtr user_session;
-  PipeFactory<UserSession> *pipe_factory = nullptr;
-};
-
-template <class UserSession>
-void PipeConnection<UserSession>::process_server_handshake(PipeMsgHead *msg)
-{
-  if (msg->length > 0)
-  {
-    std::string pipeId = std::string((const char *)msg->body, msg->length);
-
-    auto session = pipe_factory->find_user_session(pipeId);
-    if (session)
-    {
-      session->on_ready();
-      session->handle_event(1);
-    }
-    else
-    {
-      printf("not found pipe id %s\n", pipeId.c_str());
-    }
-    this->send_shakehand(pipeId);
-  }
-}
 
 }

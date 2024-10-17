@@ -6,46 +6,59 @@
 #include <tuple>
 #include <vector>
 #include <algorithm>
-struct NoneMutex {
-	inline void lock() {}
-	inline void unlock() {}
-};
 
-template <class T, class Compare = std::less<T>, class Mutex = NoneMutex>
-class MinHeap {
+namespace snet
+{
+	struct NoneMutex
+	{
+		inline void lock() {}
+		inline void unlock() {}
+	};
+
+	template <class T, class Compare = std::less<T>, class Mutex = NoneMutex>
+	class MinHeap
+	{
 
 	public:
 		explicit MinHeap(uint32_t initSize = 1024) { heap_data.reserve(initSize); }
-		inline size_t size() const {
+		inline size_t size() const
+		{
 			std::lock_guard<Mutex> guard(heap_mutex);
 			return heap_data.size();
 		}
-		inline bool empty() const {
+		inline bool empty() const
+		{
 			std::lock_guard<Mutex> guard(heap_mutex);
 			return heap_data.empty();
 		}
-		void insert(const T &item) {
+		void insert(const T &item)
+		{
 			std::lock_guard<Mutex> guard(heap_mutex);
 			heap_data.push_back(item);
-			if (heap_data.size()  > 1) {
-				std::push_heap(heap_data.begin(), heap_data.end(), Compare{}); 
+			if (heap_data.size() > 1)
+			{
+				std::push_heap(heap_data.begin(), heap_data.end(), Compare{});
 			}
 		}
 
-		void dump(std::function<void(uint32_t, T)> output) {
+		void dump(std::function<void(uint32_t, T)> output)
+		{
 			std::lock_guard<Mutex> guard(heap_mutex);
 			uint32_t idx = 0;
-			for (auto &item : heap_data) {
+			for (auto &item : heap_data)
+			{
 				output(idx++, item);
 			}
 		}
 
-		std::tuple<bool, T> pop() {
+		std::tuple<bool, T> pop()
+		{
 			static T empty;
 			std::lock_guard<Mutex> guard(heap_mutex);
-			if (!heap_data.empty()) {
+			if (!heap_data.empty())
+			{
 				auto &top = heap_data[0];
-				std::pop_heap(heap_data.begin(), heap_data.end(), Compare{} ); 
+				std::pop_heap(heap_data.begin(), heap_data.end(), Compare{});
 				heap_data.pop_back();
 				return {true, top};
 			}
@@ -63,10 +76,12 @@ class MinHeap {
 		//	return T();
 		//}
 
-		std::tuple<bool, T> top() {
+		std::tuple<bool, T> top()
+		{
 			static T empty;
 			std::lock_guard<Mutex> guard(heap_mutex);
-			if (heap_data.empty()) {
+			if (heap_data.empty())
+			{
 				return {false, empty};
 			}
 			return {true, heap_data[0]};
@@ -75,4 +90,6 @@ class MinHeap {
 	private:
 		std::vector<T> heap_data;
 		Mutex heap_mutex;
-};
+	};
+
+}
