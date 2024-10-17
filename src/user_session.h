@@ -8,6 +8,7 @@ public:
   {
 
     printf("handle event in session  %d\n", evt);
+    return true; 
   }
 
   virtual int32_t handle_data(char *data, uint32_t len) override

@@ -58,6 +58,7 @@ namespace snet
         {
         }
       }
+      return true; 
     }
 
     int32_t send_heartbeat(const std::string &msg = "")
