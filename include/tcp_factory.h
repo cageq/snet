@@ -9,8 +9,10 @@ namespace snet
 	class TcpFactory
 	{
 	public:
-		virtual ~TcpFactory() {}
 		using ConnectionPtr = std::shared_ptr<Connection>;
+		
+		virtual ~TcpFactory() {}
+
 		template <class... Args>
 		ConnectionPtr create(Args &&...args)
 		{
