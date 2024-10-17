@@ -51,6 +51,9 @@ namespace snet
 	public:
 		template <class Connection>
 		friend class TcpFactory;
+		template <class Connection, class Factory>
+		friend class TcpConnector;
+		
 		using TcpWorker = EpollWorker;
 		using TcpWorkerPtr = std::shared_ptr<TcpWorker>;
 		enum
@@ -184,15 +187,18 @@ namespace snet
 					tcp_worker->del_event(this->conn_sd);
 				}
 				this->handle_event(NetEvent::EVT_DISCONNECT);
-				if (conn_sd > 0)
-				{
-					::close(conn_sd); 
-					conn_sd = -1;
-				}
-				status = ConnStatus::CONN_CLOSED;
-				if (factory)
-				{
-					factory->delay_release(this->shared_from_this());
+
+				if (!need_reconnect){
+					if (conn_sd > 0)
+					{
+						::close(conn_sd); 
+						conn_sd = -1;
+					}
+					status = ConnStatus::CONN_CLOSED;						
+					if (factory)
+					{
+						factory->delay_release(this->shared_from_this());
+					}				
 				}				
 			} 
 	 
@@ -424,6 +430,7 @@ namespace snet
 			return 0;
 		}
 
+		bool need_reconnect = false;
 		std::mutex write_mutex;
 		std::string send_buffer;
 		std::string cache_buffer;
