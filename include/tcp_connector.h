@@ -30,9 +30,11 @@ namespace snet
     using TcpWorker = EpollWorker<Connection>;
     using TcpWorkerPtr = std::shared_ptr<TcpWorker>;
 
-    TcpConnector(Factory *factory = nullptr) : connection_factory(factory)
+    TcpConnector(Factory *factory = nullptr, TcpWorkerPtr worker = nullptr ) : connection_factory(factory)
     {
-      tcp_worker = std::make_shared<TcpWorker>();
+      
+        tcp_worker = worker == nullptr?  std::make_shared<TcpWorker>() : worker;
+      
     }
 
     bool start()

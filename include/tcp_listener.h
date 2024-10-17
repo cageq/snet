@@ -32,7 +32,20 @@ namespace snet
 		using TcpWorker = EpollWorker<Connection>;
 		using TcpWorkerPtr = std::shared_ptr<TcpWorker>;
 
-		TcpListener(Factory *factory = nullptr, int32_t workers = 4) : connection_factory(factory)
+		TcpListener(Factory *factory , std::vector<TcpWorkerPtr> workers ) : connection_factory(factory)
+		{
+			if (connection_factory == nullptr)
+			{
+				connection_factory = this;
+			}
+
+			for(auto worker : workers){
+				tcp_workers.emplace_back(worker); 
+			}		 
+		}
+
+
+		TcpListener(Factory *factory = nullptr, int32_t workers = 1) : connection_factory(factory)
 		{
 			if (connection_factory == nullptr)
 			{

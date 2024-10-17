@@ -119,9 +119,7 @@ namespace snet
                 return false;
             }
 
-            struct epoll_event event
-            {
-            };
+            struct epoll_event event { };
             event.data.fd = timer_fd;
             event.events = EPOLLIN;
             if (mod)
