@@ -1,5 +1,10 @@
 #include "pipe_session.h"
 #include "tcp_pipe.h"
+
+
+using namespace snet; 
+
+
 class UserSession : public PipeSession<UserSession> {
 
 

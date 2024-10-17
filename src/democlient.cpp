@@ -4,6 +4,7 @@
 #include <thread>
 
 
+using namespace snet; 
 
 
 int main(int argc, char *argv[]){

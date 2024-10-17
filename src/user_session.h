@@ -1,6 +1,6 @@
 #pragma once
 #include "tcp_connection.h"
-
+using namespace snet; 
 class UserSession : public TcpConnection<UserSession>
 {
 public:

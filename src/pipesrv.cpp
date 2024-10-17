@@ -2,6 +2,9 @@
 #include "tcp_pipe.h"
 #include <chrono>
 #include <thread>
+
+
+using namespace snet; 
 class UserSession : public PipeSession<UserSession> {
 
 

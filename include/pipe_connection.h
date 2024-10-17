@@ -10,6 +10,10 @@ enum PipeMsgType
   PIPE_MSG_ACK,
 };
 
+
+namespace snet
+{
+
 struct PipeMsgHead
 {
   uint32_t length;
@@ -136,4 +140,6 @@ void PipeConnection<UserSession>::process_server_handshake(PipeMsgHead *msg)
     }
     this->send_shakehand(pipeId);
   }
+}
+
 }
