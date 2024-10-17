@@ -47,6 +47,7 @@ public:
             online_connections[conn->conn_sd] = conn; 
             struct epoll_event event ={};
             event.data.ptr = conn.get();
+            //conn.use_count() ++; 
             event.events = evts;
             int ret = epoll_ctl(epoll_fd, EPOLL_CTL_ADD, conn->conn_sd, &event);
             if (ret != 0)
