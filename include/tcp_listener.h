@@ -23,19 +23,16 @@ namespace snet
 {
 
 	template <class Connection, class Factory = TcpFactory<Connection>>
-	class TcpListener : public Factory, public EpollEventHandler
+	class TcpListener : public TcpFactory<Connection>, public EpollEventHandler
 	{
 	public:
 		using ConnectionPtr = std::shared_ptr<Connection>;
 		using TcpWorker = EpollWorker ;
 		using TcpWorkerPtr = std::shared_ptr<TcpWorker>;
 
-		TcpListener(Factory *factory, std::vector<TcpWorkerPtr> workers) : connection_factory(factory)
+		TcpListener(Factory *factory, std::vector<TcpWorkerPtr> workers)  
 		{
-			if (connection_factory == nullptr)
-			{
-				connection_factory = this;
-			}
+			connection_factory = factory == nullptr? this : factory;
 			listen_worker = std::make_shared<TcpWorker>();
 			listen_worker->start();
 			for (auto worker : workers)
@@ -44,13 +41,12 @@ namespace snet
 			}
 		}
 
-		TcpListener(Factory *factory = nullptr, int32_t workers = 1) : connection_factory(factory)
+		TcpListener(Factory *factory = nullptr, int32_t workers = 1)  
 		{
 			listen_worker = std::make_shared<TcpWorker>();
-			if (connection_factory == nullptr)
-			{
-				connection_factory = this;
-			}
+
+			connection_factory = factory == nullptr? this : factory;
+ 
 			listen_worker->start();
 
 			for (int i = 0; i < workers; i++)
