@@ -18,6 +18,7 @@
 #include <unordered_map>
 #include "tcp_connection.h"
 #include "epoll_worker.h"
+#include "net_url.h"
 
 namespace snet
 {
@@ -56,6 +57,13 @@ namespace snet
 				tcp_workers.emplace_back(worker);
 			}
 		}
+
+		int start(const std::string & url ){
+			NetUrl netUrl ; 
+			netUrl.parse(url); 
+			return start(netUrl.port, netUrl.host); 
+		}
+
 
 		int start(uint16_t port, const std::string &host = "0.0.0.0", uint32_t acceptThrds = 1)
 		{		 
