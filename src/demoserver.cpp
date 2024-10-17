@@ -1,11 +1,11 @@
 
-#include "tcp_server.h"
+#include "tcp_listener.h"
 #include "user_session.h"
 
 int main(int argc, char *argv[])
 {
 
-    TcpServer<UserSession> myServer;
+    TcpListener<UserSession> myServer;
 
     myServer.start(8888);
 

@@ -1,4 +1,4 @@
-#include "tcp_client.h"
+#include "tcp_connector.h"
 #include "user_session.h"
 #include <chrono>
 #include <thread>
@@ -8,7 +8,7 @@
 
 int main(int argc, char *argv[]){
 
-	TcpClient<UserSession> tcpClient; 
+	TcpConnector<UserSession> tcpClient; 
 	tcpClient.start(); 
 
 	auto conn = tcpClient.connect("127.0.0.1", 8888); 
