@@ -24,6 +24,7 @@
 #include "epoll_worker.h"
 #include "tcp_factory.h"
 #include "string_thief.h"
+#include "snet_handler.h"
 
 // inline void string_resize(std::string &str, std::size_t sz)
 //{
@@ -34,7 +35,6 @@
 
 namespace snet
 {
-
 	
 	enum ConnStatus
 	{
@@ -44,14 +44,14 @@ namespace snet
 		CONN_CLOSED,
 	};
 
-	enum ConnEvent
-	{
-		CONN_EVENT_INIT,
-		CONN_EVENT_OPEN,
-		CONN_EVENT_SEND,
-		CONN_EVENT_RECV,
-		CONN_EVENT_CLOSE
-	};
+	// enum ConnEvent
+	// {
+	// 	CONN_EVENT_INIT,
+	// 	CONN_EVENT_OPEN,
+	// 	CONN_EVENT_SEND,
+	// 	CONN_EVENT_RECV,
+	// 	CONN_EVENT_CLOSE
+	// };
 
 	using TimerHandler = std::function<bool()>;
 
@@ -132,7 +132,7 @@ namespace snet
 
 		virtual int32_t handle_data(char *data, uint32_t len) { return len; }
 
-		virtual void handle_event(uint32_t evt) {}
+		virtual void handle_event(NetEvent  evt) {}
 
 		bool is_open()
 		{
@@ -167,7 +167,7 @@ namespace snet
 		{
 			status = ConnStatus::CONN_OPEN;
 			this->set_tcpdelay();
-			this->handle_event(CONN_EVENT_OPEN);
+			this->handle_event(NetEvent::EVT_CONNECT);
 		}
 
 		uint64_t start_timer(const TimerHandler &handler, uint64_t interval, bool bLoop = true)
@@ -331,7 +331,7 @@ namespace snet
 				{
 					tcp_worker->del_event(static_cast<T *>(this));
 				}
-				this->handle_event(CONN_EVENT_CLOSE);
+				this->handle_event(NetEvent::EVT_DISCONNECT);
 				::close(conn_sd);
 				tcp_worker->release(conn_id, this->shared_from_this());
 			}
@@ -351,7 +351,6 @@ namespace snet
 
 			if (status == ConnStatus::CONN_IDLE)
 			{
-
 				this->on_ready();
 			}
 

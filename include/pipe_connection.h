@@ -2,16 +2,15 @@
 #include "pipe_factory.h"
 #include "tcp_connection.h"
 
-
 namespace snet
 {
-enum PipeMsgType
-{
-  PIPE_MSG_SHAKE_HAND = 1,
-  PIPE_MSG_HEART_BEAT,
-  PIPE_MSG_DATA,
-  PIPE_MSG_ACK,
-};
+  enum PipeMsgType
+  {
+    PIPE_MSG_SHAKE_HAND = 1,
+    PIPE_MSG_HEART_BEAT,
+    PIPE_MSG_DATA,
+    PIPE_MSG_ACK,
+  };
 
   struct PipeMsgHead
   {
@@ -45,10 +44,10 @@ enum PipeMsgType
       return sizeof(PipeMsgHead) + msg->length;
     }
 
-    virtual void handle_event(uint32_t evt) override
+    virtual void handle_event(NetEvent evt) override
     {
       printf("handle pipe connection %d\n", evt);
-      if (evt == CONN_EVENT_OPEN)
+      if (evt == NetEvent::EVT_CONNECT)
       {
 
         if (!Parent::is_passive)
