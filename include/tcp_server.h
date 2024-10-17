@@ -191,7 +191,7 @@ private:
 
 					printf("accept new connection from %s:%u\n", remoteHost, remotePort);
 					conn->init(clientFd, remoteHost, remotePort, true );
-					worker->add_event(conn.get());			
+					worker->add_event(conn);			
 				}
 			}
 		}

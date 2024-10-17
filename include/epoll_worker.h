@@ -5,6 +5,7 @@
 #include <list>
 #include <errno.h>
 #include <sys/epoll.h>
+#include <unordered_map>
 #include <sys/timerfd.h>
 #include <stdint.h>
 #include <time.h>
@@ -38,12 +39,14 @@ public:
         return 0;
     }
 
-    bool add_event(Connection *conn, int32_t evts = EPOLLET | EPOLLIN | EPOLLOUT | EPOLLERR)
+    bool add_event(ConnectionPtr conn, int32_t evts = EPOLLET | EPOLLIN | EPOLLOUT | EPOLLERR)
     {
         if (conn->conn_sd > 0 )
         {
+
+            online_connections[conn->conn_sd] = conn; 
             struct epoll_event event ={};
-            event.data.ptr = conn;
+            event.data.ptr = conn.get();
             event.events = evts;
             int ret = epoll_ctl(epoll_fd, EPOLL_CTL_ADD, conn->conn_sd, &event);
             if (ret != 0)
@@ -83,6 +86,8 @@ public:
     {
         if (conn->conn_sd > 0 ){
       
+
+            online_connections.erase((uint64_t)conn->conn_sd); 
             int ret = epoll_ctl(epoll_fd, EPOLL_CTL_DEL, conn->conn_sd, nullptr);
             if (ret == -1)
             {
@@ -188,6 +193,7 @@ public:
     }
 
     std::vector<ConnectionPtr > release_connections; 
+    std::unordered_map<uint64_t, ConnectionPtr>  online_connections; 
     int timer_fd = -1 ;
     bool is_running = false;
     int epoll_fd = -1 ;
