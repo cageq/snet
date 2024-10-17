@@ -68,6 +68,12 @@ namespace snet
       }
     }
 
+    ConnectionPtr add_connection(const std::string &url ){
+      NetUrl netUrl ;
+      netUrl.parse(url);
+      return connect(netUrl.host, netUrl.port);
+    }
+
     template <class... Args>
     ConnectionPtr connect(const std::string &host, uint16_t port, Args &&...args)
     {
@@ -80,7 +86,6 @@ namespace snet
       auto fd = conn->do_connect();
       tcp_worker->add_event(sockfd, conn.get());
       connection_factory->add_connection(fd, conn);
-
       return conn;
     }
 
