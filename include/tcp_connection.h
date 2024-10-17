@@ -29,8 +29,13 @@
 //{
 //	str.resize(sz);
 // }
+
+
+
 namespace snet
 {
+
+	
 	enum ConnStatus
 	{
 		CONN_IDLE,
