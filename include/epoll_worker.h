@@ -15,7 +15,6 @@
 
 namespace snet
 {
-
     template <class Connection>
     class EpollWorker
     {
@@ -206,5 +205,4 @@ namespace snet
         std::thread epoll_thread;
         TcpFactoryPtr tcp_factory = nullptr;
     };
-
 }
