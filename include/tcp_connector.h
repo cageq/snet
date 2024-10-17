@@ -14,7 +14,7 @@
 #include <unordered_map>
 #include <vector>
 #include <signal.h>
-#include "heap_timer.h"
+
 #include "tcp_connection.h"
 #include "epoll_worker.h"
 
@@ -27,20 +27,18 @@ namespace snet
   public:
     using ConnectionPtr = std::shared_ptr<Connection>;
 
-    using TcpWorker = EpollWorker<Connection>;
+    using TcpWorker = EpollWorker ;
     using TcpWorkerPtr = std::shared_ptr<TcpWorker>;
 
     TcpConnector(Factory *factory = nullptr, TcpWorkerPtr worker = nullptr ) : connection_factory(factory)
-    {
-      
-        tcp_worker = worker == nullptr?  std::make_shared<TcpWorker>() : worker;
-      
+    {     
+        tcp_worker = worker == nullptr?  std::make_shared<TcpWorker>() : worker;      
     }
 
     bool start()
     {
       signal(SIGPIPE, SIG_IGN);
-      tcp_worker->start(connection_factory);
+      tcp_worker->start();
       return true;
     }
 
@@ -58,7 +56,7 @@ namespace snet
         if (!conn->is_open())
         {
           auto fd = conn->do_connect();
-          tcp_worker->mod_event(conn.get());
+          tcp_worker->mod_event(conn->conn_sd);
         }
       }
     }
@@ -80,7 +78,7 @@ namespace snet
       conn->tcp_worker = tcp_worker;
       conn->init(sockfd, host, port, false);
       auto fd = conn->do_connect();
-      tcp_worker->add_event(conn);
+      tcp_worker->add_event(sockfd, conn.get());
       connection_map[fd] = conn;
       return conn;
     }

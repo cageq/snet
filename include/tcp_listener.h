@@ -17,67 +17,54 @@
 #include <arpa/inet.h>
 #include <unordered_map>
 #include "tcp_connection.h"
-#include "heap_timer.h"
 #include "epoll_worker.h"
 
 namespace snet
 {
 
 	template <class Connection, class Factory = TcpFactory<Connection>>
-	class TcpListener : public HeapTimer<>, public Factory
+	class TcpListener : public Factory, public EpollEventHandler
 	{
-
 	public:
 		using ConnectionPtr = std::shared_ptr<Connection>;
-		using TcpWorker = EpollWorker<Connection>;
+		using TcpWorker = EpollWorker ;
 		using TcpWorkerPtr = std::shared_ptr<TcpWorker>;
 
-		TcpListener(Factory *factory , std::vector<TcpWorkerPtr> workers ) : connection_factory(factory)
+		TcpListener(Factory *factory, std::vector<TcpWorkerPtr> workers) : connection_factory(factory)
 		{
 			if (connection_factory == nullptr)
 			{
 				connection_factory = this;
 			}
-
-			for(auto worker : workers){
-				tcp_workers.emplace_back(worker); 
-			}		 
+			listen_worker = std::make_shared<TcpWorker>();
+			listen_worker->start();
+			for (auto worker : workers)
+			{
+				tcp_workers.emplace_back(worker);
+			}
 		}
-
 
 		TcpListener(Factory *factory = nullptr, int32_t workers = 1) : connection_factory(factory)
 		{
+			listen_worker = std::make_shared<TcpWorker>();
 			if (connection_factory == nullptr)
 			{
 				connection_factory = this;
 			}
+			listen_worker->start();
 
 			for (int i = 0; i < workers; i++)
 			{
 				auto worker = std::make_shared<TcpWorker>();
-				worker->start(connection_factory);
-				tcp_workers.push_back(worker);
+				worker->start();
+				tcp_workers.emplace_back(worker);
 			}
 		}
 
 		int start(uint16_t port, const std::string &host = "0.0.0.0", uint32_t acceptThrds = 1)
-		{
-			listen_epoll_fd = epoll_create(10);
-			if (-1 == listen_epoll_fd)
-			{
-				perror("create epoll error ");
-				return -1;
-			}
+		{		 
 			listen_addr = host;
-			printf("start listen  %s:%d\n", host.c_str(), port);
-
-			int ret = fcntl(listen_epoll_fd, F_SETFD, FD_CLOEXEC);
-			if (ret < 0)
-			{
-				printf("set epoll option failed");
-				return -1;
-			}
-
+			printf("start listen  %s:%d\n", host.c_str(), port); 	 
 			listen_sd = socket(AF_INET, SOCK_STREAM, 0);
 			signal(SIGPIPE, SIG_IGN);
 			if (listen_sd < 0)
@@ -86,16 +73,19 @@ namespace snet
 				exit(-1);
 			}
 			set_reuse();
-			set_nonblocking(listen_sd);
+			// set_nonblocking(listen_sd);
 			do_bind(port, host.c_str());
 			do_listen();
 
-			for (uint32_t i = 0; i < acceptThrds; ++i)
-			{
-				listen_threads.emplace_back([this]()
-											{ run(); });
-			}
+			listen_worker->add_event(listen_sd, this);
 
+
+			listen_worker->start_timer([this](){
+				if (connection_factory){
+					connection_factory->clear_released();
+				}				
+				return true; 
+			}, 10000, true ); 
 			return 0;
 		}
 
@@ -106,19 +96,16 @@ namespace snet
 				is_running = false;
 				::close(listen_sd);
 			}
+			listen_worker->stop();
 
-			for (auto &th : listen_threads)
+			for (auto &worker : tcp_workers)
 			{
-				if (th.joinable())
-				{
-					th.join(); // 等待线程结束
-				}
+				worker->stop();
 			}
 		}
 
 		void broadcast(const std::string &msg)
 		{
-
 			for (auto item : connection_factory->connection_map)
 			{
 				if (item.second)
@@ -128,99 +115,55 @@ namespace snet
 			}
 		}
 
-	private:
-		void run()
+		uint32_t start_timer(const TimerHandler &handler, uint32_t interval, bool loop = true)
 		{
-			is_running = true;
-			struct epoll_event event
-			{
-			};
-			event.data.fd = listen_sd;
-			event.events = EPOLLET | EPOLLIN | EPOLLERR;
-			// register listen fd to epoll fd
-			int ret = epoll_ctl(listen_epoll_fd, EPOLL_CTL_ADD, listen_sd, &event);
-			if (-1 == ret)
-			{
-				// trace;
-				printf("add listen fd to epoll fd failed\n");
-				is_running = false;
-				return;
-			}
+			return listen_worker->start_timer(handler, interval, loop);
+		}
 
-			// struct sockaddr_in addr;
-			struct epoll_event waitEvents[MAX_WAIT_EVENT] = {};
-			while (is_running)
+		virtual void process_event(int32_t evts)
+		{
+
+			if (EPOLLIN == (evts & EPOLLIN))
 			{
-				printf("wait listener epoll\n");
-				// wait untill events
-				int nFds = epoll_wait(listen_epoll_fd, waitEvents, MAX_WAIT_EVENT, -1);
-				if (nFds < 0)
+				struct sockaddr_in cliAddr;
+				int addrlen = sizeof(cliAddr);
+				// int clientFd = accept(listen_sd, (struct sockaddr *)&cliAddr, (socklen_t*)&addrlen);
+				int clientFd = accept4(listen_sd, (struct sockaddr *)&cliAddr, (socklen_t *)&addrlen, SOCK_NONBLOCK | SOCK_CLOEXEC);
+				if (clientFd < 0)
 				{
-					if (errno == EAGAIN || errno == EWOULDBLOCK)
+					if ((errno == EAGAIN) || (errno == EWOULDBLOCK))
 					{
-
-						continue;
+						// non-blocking  mode has no connection
+						return;
 					}
 					else
 					{
-						printf("wait error , errno is %d\n", errno);
-						break;
+						printf("accept failed, errno %d ", errno);
+						return;
 					}
 				}
 
-				for (int i = 0; i < nFds; i++)
-				{
-					// new connection, event fd will be equal listen fd
-					if ((listen_sd == waitEvents[i].data.fd) && ((EPOLLIN == waitEvents[i].events) & EPOLLIN))
-					{
-						struct sockaddr_in cliAddr;
-						int addrlen = sizeof(cliAddr);
+				set_nodelay(clientFd);
+				// set_noblock(clientFd);
 
-						// int clientFd = accept(listen_sd, (struct sockaddr *)&cliAddr, (socklen_t*)&addrlen);
-						int clientFd = accept4(listen_sd, (struct sockaddr *)&cliAddr, (socklen_t *)&addrlen, SOCK_NONBLOCK | SOCK_CLOEXEC);
-						if (clientFd < 0)
-						{
-							if ((errno == EAGAIN) || (errno == EWOULDBLOCK))
-							{
-								// non-blocking  mode has no connection
-								continue;
-							}
-							else
-							{
-								printf("accept failed, errno %d ", errno);
-								return;
-							}
-						}
+				ConnectionPtr conn  = connection_factory->create();
 
-						set_nodelay(clientFd);
-						// set_noblock(clientFd);
+				auto worker = get_worker();
+				conn->tcp_worker = worker;
 
-						ConnectionPtr conn;
-						if (connection_factory != nullptr)
-						{
-							conn = connection_factory->create();
-						}
-						else
-						{
-							conn = std::make_shared<Connection>();
-						}
+				char remoteHost[INET_ADDRSTRLEN] = {};
+				inet_ntop(AF_INET, &cliAddr.sin_addr, remoteHost, sizeof(remoteHost));
+				int32_t remotePort = ntohs(cliAddr.sin_port);
 
-						auto worker = get_worker();
-						conn->tcp_worker = worker;
-
-						char remoteHost[INET_ADDRSTRLEN] = {};
-						inet_ntop(AF_INET, &cliAddr.sin_addr, remoteHost, sizeof(remoteHost));
-						int32_t remotePort = ntohs(cliAddr.sin_port);
-
-						printf("accept new connection from %s:%u\n", remoteHost, remotePort);
-						conn->init(clientFd, remoteHost, remotePort, true);
-						worker->add_event(conn);
-					}
-				}
+				printf("accept new connection from %s:%u\n", remoteHost, remotePort);
+				conn->init(clientFd, remoteHost, remotePort, true); 
+		 
+				worker->add_event(clientFd, conn.get());
 			}
-
-			printf("quiting listen thread ");
 		}
+
+	private:
+	 
 
 		/*************************************************************/
 		/* Allow socket descriptor to be reuseable                   */
@@ -232,7 +175,7 @@ namespace snet
 								(char *)&on, sizeof(on));
 			if (rc < 0)
 			{
-				perror("setsockopt() failed");
+				perror("setsockopt(reuse address) failed");
 				::close(listen_sd);
 				exit(-1);
 			}
@@ -276,8 +219,7 @@ namespace snet
 		}
 
 		void do_bind(uint16_t port, const char *ipAddr = "0.0.0.0")
-		{
-
+		{ 
 			// struct sockaddr_in6   addr;
 			// memset(&addr, 0, sizeof(addr));
 			// addr.sin6_family      = AF_INET6;
@@ -292,7 +234,7 @@ namespace snet
 			int rc = bind(listen_sd, (struct sockaddr *)&addr, sizeof(sockaddr_in));
 			if (rc < 0)
 			{
-				perror("bind() failed");
+				perror("bind() failed, exit");
 				::close(listen_sd);
 				exit(-1);
 			}
@@ -320,17 +262,16 @@ namespace snet
 		}
 
 		uint32_t worker_index = 0;
-		int listen_epoll_fd = -1;
-
+ 
 		int listen_sd = -1;
 		bool is_running = false;
-
-		std::vector<std::thread> listen_threads;
 
 		std::string listen_addr;
 		Factory *connection_factory = nullptr;
 
-		std::vector<TcpWorkerPtr> tcp_workers;
+		TcpWorkerPtr listen_worker;
+		std::vector<TcpWorkerPtr> tcp_workers; 
+	 
 	};
 
 }

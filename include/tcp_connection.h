@@ -31,11 +31,9 @@
 //	str.resize(sz);
 // }
 
-
-
 namespace snet
 {
-	
+
 	enum ConnStatus
 	{
 		CONN_IDLE,
@@ -44,23 +42,16 @@ namespace snet
 		CONN_CLOSED,
 	};
 
-	// enum ConnEvent
-	// {
-	// 	CONN_EVENT_INIT,
-	// 	CONN_EVENT_OPEN,
-	// 	CONN_EVENT_SEND,
-	// 	CONN_EVENT_RECV,
-	// 	CONN_EVENT_CLOSE
-	// };
-
-	using TimerHandler = std::function<bool()>;
+	// using TimerHandler = std::function<bool()>;
 
 	template <class T>
-	class TcpConnection : public std::enable_shared_from_this<T>
+	class TcpConnection : public std::enable_shared_from_this<T>, public EpollEventHandler
 	{
 
 	public:
-		using TcpWorker = EpollWorker<T>;
+		template <class Connection>
+		friend class TcpFactory;
+		using TcpWorker = EpollWorker;
 		using TcpWorkerPtr = std::shared_ptr<TcpWorker>;
 		enum
 		{
@@ -73,11 +64,9 @@ namespace snet
 		{
 			conn_id = connection_index++;
 			send_buffer.reserve(kWriteBufferSize);
-		};
-
-		virtual ~TcpConnection()
-		{
 		}
+
+		virtual ~TcpConnection() = default;
 
 		int32_t send(const char *data, uint32_t dataLen)
 		{
@@ -89,7 +78,7 @@ namespace snet
 			if (tcp_worker)
 			{
 				epoll_events |= EPOLLOUT;
-				tcp_worker->mod_event(static_cast<T *>(this), epoll_events);
+				tcp_worker->mod_event(this->conn_sd, this, epoll_events);
 			}
 		}
 
@@ -125,14 +114,14 @@ namespace snet
 			return -1;
 		}
 
-		virtual int32_t demarcate_message(char *data, uint32_t len)
+		virtual int32_t handle_package(char *data, uint32_t len)
 		{
 			return len;
 		}
 
 		virtual int32_t handle_data(char *data, uint32_t len) { return len; }
 
-		virtual bool handle_event(NetEvent  evt) { return true; }
+		virtual bool handle_event(NetEvent evt) { return true; }
 
 		bool is_open()
 		{
@@ -142,11 +131,6 @@ namespace snet
 				return (status == CONN_OPEN);
 			}
 			return false;
-		}
-
-		void close()
-		{
-			this->do_close();
 		}
 
 		int32_t get_id()
@@ -183,6 +167,38 @@ namespace snet
 			tcp_worker->stop_timer(timerId);
 		}
 
+		
+		void close()
+		{
+			do_close(); 
+		}
+
+		void do_close()
+		{
+			if (status < ConnStatus::CONN_CLOSING)
+			{
+				status = ConnStatus::CONN_CLOSING;
+
+				if (tcp_worker)
+				{
+					tcp_worker->del_event(this->conn_sd);
+				}
+				this->handle_event(NetEvent::EVT_DISCONNECT);
+				if (conn_sd > 0)
+				{
+					::close(conn_sd); 
+					conn_sd = -1;
+				}
+				status = ConnStatus::CONN_CLOSED;
+				if (factory)
+				{
+					factory->delay_release(this->shared_from_this());
+				}				
+			} 
+	 
+		}
+
+
 		int32_t do_connect()
 		{
 			// conn_sd = socket(AF_INET, SOCK_STREAM, 0);
@@ -208,7 +224,6 @@ namespace snet
 
 		void do_send()
 		{
-
 			{
 				std::lock_guard<std::mutex> lk(write_mutex);
 				if (!send_buffer.empty())
@@ -294,7 +309,7 @@ namespace snet
 			while (readPos < read_buffer_pos)
 			{
 				int32_t pkgLen =
-					demarcate_message(&read_buffer[readPos], read_buffer_pos);
+					handle_package(&read_buffer[readPos], read_buffer_pos);
 
 				if (pkgLen <= 0 || pkgLen > read_buffer_pos - readPos)
 				{
@@ -320,33 +335,7 @@ namespace snet
 			return true;
 		}
 
-		void do_close()
-		{
-			printf("do close in status %d\n", status);
-			if (status < ConnStatus::CONN_CLOSING)
-			{
-				status = ConnStatus::CONN_CLOSING;
-
-				if (tcp_worker)
-				{
-					tcp_worker->del_event(static_cast<T *>(this));
-				}
-				this->handle_event(NetEvent::EVT_DISCONNECT);
-				::close(conn_sd);
-				tcp_worker->release(conn_id, this->shared_from_this());
-			}
-			else if (status == ConnStatus::CONN_CLOSING)
-			{
-
-				if (conn_sd > 0)
-				{
-					conn_sd = -1;
-				}
-				status = ConnStatus::CONN_CLOSED;
-			}
-		}
-
-		void process_event(int32_t evts)
+		virtual void process_event(int32_t evts)
 		{
 
 			if (status == ConnStatus::CONN_IDLE)
@@ -443,6 +432,7 @@ namespace snet
 		bool is_passive = true;
 		uint64_t conn_id; // connection id
 		static std::atomic_int64_t connection_index;
+		TcpFactory<T> *factory = nullptr;
 	};
 
 	template <class T>

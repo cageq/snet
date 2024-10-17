@@ -29,7 +29,7 @@ namespace snet
 
     PipeConnection(UserSessionPtr session = nullptr, PipeFactory<UserSession> *factroy = nullptr) : user_session(session), pipe_factory(factroy) {}
 
-    virtual int32_t demarcate_message(char *data, uint32_t len)
+    virtual int32_t handle_package(char *data, uint32_t len)
     {
       if (len < sizeof(PipeMsgHead))
       {

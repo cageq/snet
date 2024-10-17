@@ -139,9 +139,9 @@ namespace snet
 			}
 		}
 
+		//return microseconds 
 		uint32_t timer_loop()
-		{
-
+		{ 
 			auto cur = get_now();
 			bool hasTop = false;
 			TimerNodePtr node = nullptr;
@@ -164,17 +164,19 @@ namespace snet
 			}
 
 			if (node)
-			{
-				auto nextExpire = node->expire_time - cur;
-				//	if (nextExpire  > TimeScale(0) ) {
-				return std::chrono::duration_cast<std::chrono::microseconds>(nextExpire).count();
-				//		}
+			{ 
+				if (node->expire_time  > cur ) {
+					auto nextExpire = node->expire_time - cur;
+					return std::chrono::duration_cast<std::chrono::microseconds>(nextExpire).count();
+				}else {
+					timer_loop(); 
+				}
 			}
 			else
 			{
 				// std::this_thread::sleep_for(TimeScale(1));
 			}
-			return 1000000;
+			return 100;// default 100ms
 		}
 
 	private:

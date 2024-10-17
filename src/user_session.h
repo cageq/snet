@@ -1,14 +1,18 @@
 #pragma once
 #include "tcp_connection.h"
-using namespace snet; 
+using namespace snet;
 class UserSession : public TcpConnection<UserSession>
 {
 public:
+  virtual ~UserSession()
+  {
+    printf("destroy user session \n");
+  }
   virtual bool handle_event(NetEvent evt) override
   {
 
     printf("handle event in session  %d\n", evt);
-    return true; 
+    return true;
   }
 
   virtual int32_t handle_data(char *data, uint32_t len) override
