@@ -90,8 +90,8 @@ namespace snet
 	    inline void enable_reconnect(uint32_t interval = 3000000 ){      
 			need_reconnect = true; 
 
-			tcp_worker->start_timer( [this, interval ](){ 
-					printf("do reconnect.....%d\n", interval); 
+			tcp_worker->start_timer( [this ](){ 
+		 
 					if (!is_open()){
 						
 						do_connect(); 
@@ -129,7 +129,7 @@ namespace snet
 				return sent;
 			}
 			printf("connection is not open %d , status %d\n", conn_sd, conn_status); 
-			return -2;
+			return -1;
 		}
 
 		virtual int32_t handle_package(char *data, uint32_t len)
@@ -249,8 +249,7 @@ namespace snet
 			printf("connect to %s:%d success fd %d\n", remote_host.c_str(), remote_port, conn_sd); 
   
 			tcp_worker->add_event(conn_sd, this );	 
-
-			// this->on_ready(); 
+ 
 			return conn_sd;
 		}
 
@@ -369,12 +368,14 @@ namespace snet
 
 		virtual void process_event(int32_t evts) override
 		{ 
-			printf("on tcp connection event %d status %d sd %d\n", evts,   conn_status ,  conn_sd); 
-			if (conn_status == ConnStatus::CONN_IDLE)
-			{
-				printf("+++++++++++++++ready +++++++++++++++++++++++++++\n"); 
+			//printf("on tcp connection event %d status %d sd %d\n", evts,   conn_status ,  conn_sd); 
+			if ((EPOLLIN == (evts & EPOLLIN)) ||(EPOLLOUT == (evts & EPOLLOUT)) ) {
+		if (conn_status == ConnStatus::CONN_IDLE)
+			{ 
 				this->on_ready();
 			}
+			}
+	
 
 			if (EPOLLIN == (evts & EPOLLIN))
 			{

@@ -27,10 +27,10 @@ namespace snet
   public:
     virtual ~PipeSession() {}
     using PipeConnectionPtr = PipeConnection<UserSession>;
-    virtual bool handle_event(uint32_t evt) { return true; }
+    virtual bool handle_event(uint32_t evt)   { return true; }
 
     virtual int32_t handle_message(char *data, uint32_t dataLen,
-                                   uint64_t obdata = 0)
+                                   uint64_t obdata = 0)  
     {
       return 0;
     }
