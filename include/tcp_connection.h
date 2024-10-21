@@ -41,8 +41,7 @@ namespace snet
 		CONN_CLOSING,
 		CONN_CLOSED,
 	};
-
-	// using TimerHandler = std::function<bool()>;
+ 
 
 	template <class T>
 	class TcpConnection : public std::enable_shared_from_this<T>, public EpollEventHandler
@@ -85,8 +84,17 @@ namespace snet
 			}
 		}
 
-	    inline void enable_reconnect(){      
+
+		//reconnect  timer 3000000  3s   
+	    inline void enable_reconnect(uint32_t interval = 3000000 ){      
 			need_reconnect = true; 
+
+			tcp_worker->start_timer( [this ](){ 
+					if (!is_open()){
+						do_connect(); 
+					}
+					return true; 
+			}, interval, true); 
     	}
 
 		void set_tcpdelay()
@@ -134,8 +142,8 @@ namespace snet
 		{
 			if (conn_sd > 0)
 			{
-				// return (status == CONN_OPEN) && (fcntl(conn_sd, F_GETFD) != -1 || errno != EBADF);
-				return (status == CONN_OPEN);
+				// return (conn_status == CONN_OPEN) && (fcntl(conn_sd, F_GETFD) != -1 || errno != EBADF);
+				return (conn_status == CONN_OPEN);
 			}
 			return false;
 		}
@@ -156,7 +164,7 @@ namespace snet
 
 		void on_ready()
 		{
-			status = ConnStatus::CONN_OPEN;
+			conn_status = ConnStatus::CONN_OPEN;
 			this->set_tcpdelay();
 			this->handle_event(NetEvent::EVT_CONNECT);
 		}
@@ -165,6 +173,7 @@ namespace snet
 		{
 			return tcp_worker->start_timer(handler, interval, bLoop);
 		}
+
 		bool restart_timer(uint64_t timerId, uint64_t interval = 0)
 		{
 			return tcp_worker->restart_timer(timerId, interval);
@@ -182,9 +191,9 @@ namespace snet
 
 		void do_close()
 		{
-			if (status < ConnStatus::CONN_CLOSING)
+			if (conn_status < ConnStatus::CONN_CLOSING)
 			{
-				status = ConnStatus::CONN_CLOSING;
+				conn_status = ConnStatus::CONN_CLOSING;
 
 				if (tcp_worker)
 				{
@@ -198,7 +207,7 @@ namespace snet
 						::close(conn_sd); 
 						conn_sd = -1;
 					}
-					status = ConnStatus::CONN_CLOSED;						
+					conn_status = ConnStatus::CONN_CLOSED;						
 					if (factory)
 					{
 						factory->delay_release(this->shared_from_this());
@@ -222,13 +231,15 @@ namespace snet
 				printf("inet_pton error for %s\n", remote_host.c_str());
 				return -1;
 			}
-
-			if (::connect(conn_sd, (struct sockaddr *)&servaddr, sizeof(servaddr)) < 0)
+			int ret = ::connect(conn_sd, (struct sockaddr *)&servaddr, sizeof(servaddr)) ; 
+			if ( ret < 0)
 			{
-				printf("connect error: %s(errno: %d)\n", strerror(errno), errno);
+				printf("connect to %s:%d error: %s(errno: %d)\n", remote_host.c_str(), remote_port,  strerror(errno), errno);
 				return -1;
 			}
-			this->on_ready();
+
+			tcp_worker->add_event(conn_sd, this );
+	 
 			return conn_sd;
 		}
 
@@ -348,7 +359,7 @@ namespace snet
 		virtual void process_event(int32_t evts)
 		{
 
-			if (status == ConnStatus::CONN_IDLE)
+			if (conn_status == ConnStatus::CONN_IDLE)
 			{
 				this->on_ready();
 			}
@@ -384,7 +395,7 @@ namespace snet
 		uint16_t remote_port;
 		std::string remote_host;
 
-		ConnStatus status = ConnStatus::CONN_IDLE;
+		ConnStatus conn_status = ConnStatus::CONN_IDLE;
 		TcpWorkerPtr tcp_worker;
 		int conn_sd = -1;
 		inline uint64_t get_cid()
