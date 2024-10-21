@@ -41,10 +41,10 @@ namespace snet
       signal(SIGPIPE, SIG_IGN);
       tcp_worker->start();
 
-      tcp_worker->start_timer([this](){
-          this->process_timeout(); 
-          return true; 
-      }, 3000000, true);
+      // tcp_worker->start_timer([this](){
+      //     this->process_timeout(); 
+      //     return true; 
+      // }, 3000000, true);
 
       return true;
     }
@@ -57,15 +57,15 @@ namespace snet
     void process_timeout()
     {
 
-      for (auto &item : connection_factory->connection_map)
-      {
-        auto conn = item.second;
-        if (!conn->is_open())
-        {
-          auto fd = conn->do_connect();
-          tcp_worker->mod_event(conn->conn_sd, conn.get());
-        }
-      }
+      // for (auto &item : connection_factory->connection_map)
+      // {
+      //   auto conn = item.second;
+      //   if (!conn->is_open())
+      //   {
+      //     auto fd = conn->do_connect();
+      //     tcp_worker->mod_event(conn->conn_sd, conn.get());
+      //   }
+      // }
     }
 
     void enable_reconnect(){
@@ -88,7 +88,7 @@ namespace snet
       conn->tcp_worker = tcp_worker;
       conn->init(sockfd, host, port, false);
       auto fd = conn->do_connect();
-      tcp_worker->add_event(sockfd, conn.get());
+
       connection_factory->add_connection(fd, conn);
       return conn;
     }
