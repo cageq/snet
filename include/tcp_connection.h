@@ -207,7 +207,10 @@ namespace snet
 				}
 				this->handle_event(NetEvent::EVT_DISCONNECT);
 
-				if (!need_reconnect){
+				if (need_reconnect){
+					conn_status = ConnStatus::CONN_IDLE;
+				}else{
+				
 					if (conn_sd > 0)
 					{
 						::close(conn_sd); 
@@ -246,7 +249,7 @@ namespace snet
 				printf("connect to %s:%d error: %s(errno: %d)\n", remote_host.c_str(), remote_port,  strerror(errno), errno);
 				return -1;
 			}
-			printf("connect to %s:%d success fd %d\n", remote_host.c_str(), remote_port, conn_sd); 
+			printf("connect to %s:%d success fd %d status %d\n", remote_host.c_str(), remote_port, conn_sd , conn_status); 
   
 			tcp_worker->add_event(conn_sd, this );	 
  
@@ -369,12 +372,12 @@ namespace snet
 		virtual void process_event(int32_t evts) override
 		{ 
 			//printf("on tcp connection event %d status %d sd %d\n", evts,   conn_status ,  conn_sd); 
-			if ((EPOLLIN == (evts & EPOLLIN)) ||(EPOLLOUT == (evts & EPOLLOUT)) ) {
-		if (conn_status == ConnStatus::CONN_IDLE)
-			{ 
-				this->on_ready();
-			}
-			}
+			//if ((EPOLLIN == (evts & EPOLLIN)) ||(EPOLLOUT == (evts & EPOLLOUT)) ) {
+				if (conn_status == ConnStatus::CONN_IDLE)
+				{ 
+					this->on_ready();
+				}
+			//}	
 	
 
 			if (EPOLLIN == (evts & EPOLLIN))
