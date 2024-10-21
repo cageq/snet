@@ -81,8 +81,7 @@ namespace snet
 			do_bind(port, host.c_str());
 			do_listen();
 
-			listen_worker->add_event(listen_sd, this);
-
+			listen_worker->add_event(listen_sd, this); 
 
 			listen_worker->start_timer([this](){
 				if (connection_factory){

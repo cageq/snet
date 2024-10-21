@@ -1,10 +1,12 @@
 
 #pragma once
 
+
 #include <string>
 namespace snet
 {
 
+#if __GLIBCXX__  >   20190311  
   template <typename Function, Function func_ptr>
   class string_thief
   {
@@ -43,5 +45,15 @@ namespace snet
     str.resize(sz);
 #endif
   }
+
+#else 
+
+  inline void string_resize(std::string &str, std::size_t sz)
+  {
+
+    str.resize(sz);
+  }
+
+#endif //
 
 }
