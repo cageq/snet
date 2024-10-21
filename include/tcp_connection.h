@@ -62,9 +62,10 @@ namespace snet
 			kMaxPackageLimit = 16 * 1024
 		};
 
-		TcpConnection()
+		 TcpConnection()
 		{
-			conn_id = connection_index++;
+			(connection_index++); 
+			conn_id = connection_index.load(); 
 			send_buffer.reserve(kWriteBufferSize);
 		}
 
@@ -89,8 +90,10 @@ namespace snet
 	    inline void enable_reconnect(uint32_t interval = 3000000 ){      
 			need_reconnect = true; 
 
-			tcp_worker->start_timer( [this ](){ 
+			tcp_worker->start_timer( [this, interval ](){ 
+					printf("do reconnect.....%d\n", interval); 
 					if (!is_open()){
+						
 						do_connect(); 
 					}
 					return true; 
@@ -122,11 +125,11 @@ namespace snet
 				if (!isWriting)
 				{
 					notify_send();
-				}
-
+				} 
 				return sent;
 			}
-			return -1;
+			printf("connection is not open %d , status %d\n", conn_sd, conn_status); 
+			return -2;
 		}
 
 		virtual int32_t handle_package(char *data, uint32_t len)
@@ -134,7 +137,9 @@ namespace snet
 			return len;
 		}
 
-		virtual int32_t handle_data(char *data, uint32_t len) { return len; }
+		virtual int32_t handle_data(char *data, uint32_t len) { 
+			return len; 
+		}
 
 		virtual bool handle_event(NetEvent evt) { return true; }
 
@@ -148,25 +153,26 @@ namespace snet
 			return false;
 		}
 
-		int32_t get_id()
-		{
-			return conn_sd;
-		}
 
 		void init(int fd, const std::string &host = "", uint16_t port = 0, bool passive = true)
 		{
-			epoll_events = EPOLLET | EPOLLIN | EPOLLERR;
-			this->conn_sd = fd;
-			is_passive = passive;
 			remote_host = host;
 			remote_port = port;
+			epoll_events = EPOLLET | EPOLLIN | EPOLLERR;
+			if (fd > 0){
+				this->conn_sd = fd;
+			}			
+			is_passive = passive;
 		}
 
 		void on_ready()
 		{
-			conn_status = ConnStatus::CONN_OPEN;
-			this->set_tcpdelay();
-			this->handle_event(NetEvent::EVT_CONNECT);
+			if (conn_status == ConnStatus::CONN_IDLE){
+				conn_status = ConnStatus::CONN_OPEN;
+				this->set_tcpdelay();
+				this->handle_event(NetEvent::EVT_CONNECT);
+				printf("connection is ready %d\n", conn_sd); 
+			}			
 		}
 
 		uint64_t start_timer(const TimerHandler &handler, uint64_t interval, bool bLoop = true)
@@ -213,14 +219,15 @@ namespace snet
 						factory->delay_release(this->shared_from_this());
 					}				
 				}				
-			} 
-	 
+			}  
 		}
 
 
 		int32_t do_connect()
 		{
-			// conn_sd = socket(AF_INET, SOCK_STREAM, 0);
+			conn_sd = socket(AF_INET, SOCK_STREAM, 0);
+
+			printf("do connect socket fd %d remote host %s, port %d\n", conn_sd, remote_host.c_str(), remote_port); 
 			struct sockaddr_in servaddr;
 			memset(&servaddr, 0, sizeof(sockaddr_in));
 			servaddr.sin_family = AF_INET;
@@ -230,16 +237,20 @@ namespace snet
 			{
 				printf("inet_pton error for %s\n", remote_host.c_str());
 				return -1;
-			}
+			} 
+		 
 			int ret = ::connect(conn_sd, (struct sockaddr *)&servaddr, sizeof(servaddr)) ; 
 			if ( ret < 0)
 			{
+				::close(conn_sd);
 				printf("connect to %s:%d error: %s(errno: %d)\n", remote_host.c_str(), remote_port,  strerror(errno), errno);
 				return -1;
 			}
+			printf("connect to %s:%d success fd %d\n", remote_host.c_str(), remote_port, conn_sd); 
+  
+			tcp_worker->add_event(conn_sd, this );	 
 
-			tcp_worker->add_event(conn_sd, this );
-	 
+			// this->on_ready(); 
 			return conn_sd;
 		}
 
@@ -356,11 +367,12 @@ namespace snet
 			return true;
 		}
 
-		virtual void process_event(int32_t evts)
-		{
-
+		virtual void process_event(int32_t evts) override
+		{ 
+			printf("on tcp connection event %d status %d sd %d\n", evts,   conn_status ,  conn_sd); 
 			if (conn_status == ConnStatus::CONN_IDLE)
 			{
+				printf("+++++++++++++++ready +++++++++++++++++++++++++++\n"); 
 				this->on_ready();
 			}
 
@@ -452,7 +464,7 @@ namespace snet
 
 		int32_t epoll_events = 0;
 		bool is_passive = true;
-		uint64_t conn_id; // connection id
+		uint64_t conn_id {0}; // connection id
 		static std::atomic_int64_t connection_index;
 		TcpFactory<T> *factory = nullptr;
 	};

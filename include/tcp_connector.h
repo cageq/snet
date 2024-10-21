@@ -41,12 +41,7 @@ namespace snet
     {
       signal(SIGPIPE, SIG_IGN);
       tcp_worker->start();
-
-      // tcp_worker->start_timer([this](){
-      //     this->process_timeout(); 
-      //     return true; 
-      // }, 3000000, true);
-
+ 
       return true;
     }
 
@@ -73,24 +68,22 @@ namespace snet
       
     }
 
-    ConnectionPtr add_connection(const std::string &url ){
+    ConnectionPtr add_connection(const std::string &url  ){
       NetUrl netUrl ;
       netUrl.parse(url);
+ 
       return connect(netUrl.host, netUrl.port);
     }
 
     template <class... Args>
     ConnectionPtr connect(const std::string &host, uint16_t port, Args &&...args)
     {
-      ConnectionPtr conn = connection_factory->create(std::forward<Args>(args)...);
-
+      ConnectionPtr conn = connection_factory->create(std::forward<Args>(args)...); 
       conn->need_reconnect = true; 
-      int sockfd = socket(AF_INET, SOCK_STREAM, 0);
       conn->tcp_worker = tcp_worker;
-      conn->init(sockfd, host, port, false);
-      auto fd = conn->do_connect();
+      conn->init(0, host, port, false);
+      auto fd = conn->do_connect(); 
 
-      connection_factory->add_connection(fd, conn);
       return conn;
     }
 
