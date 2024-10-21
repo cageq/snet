@@ -27,12 +27,10 @@ namespace snet
 				conn = std::make_shared<Connection>(std::forward<Args>(args)...);
 			}
 
-			this->on_create(conn->get_cid(), conn); 
 			conn->factory = this; 
-			{
-				std::lock_guard<std::mutex> guard(connection_map_mutex);
-				connection_map[conn->get_cid()] = conn; 
-			}
+			this->on_create(conn->get_cid(), conn); 
+	
+			add_connection(conn->get_cid(), conn); 
 	
 			return conn;
 		}
@@ -47,21 +45,24 @@ namespace snet
 			{
 				on_release(conn->get_cid(), conn);
 			}
+
+			remove_connection(conn->get_cid()); 
 		}
 
 		virtual void on_create(uint64_t cid, ConnectionPtr conn)
 		{
-			add_connection(cid, conn);
+		
 		}
 
 		virtual void on_release(uint64_t cid, ConnectionPtr conn)
 		{
-			remove_connection(cid);
+			
 		}
 
 		void add_connection(uint64_t cid, ConnectionPtr conn)
 		{
 			printf("add connection from factory %lu\n", cid);
+			std::lock_guard<std::mutex> guard(connection_map_mutex);
 			connection_map[cid] = conn;
 		}
 

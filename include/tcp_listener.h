@@ -160,8 +160,9 @@ namespace snet
 
 				printf("accept new connection from %s:%u\n", remoteHost, remotePort);
 				conn->init(clientFd, remoteHost, remotePort, true); 
-		 
+				
 				worker->add_event(clientFd, conn.get());
+				conn->on_ready(); 			
 			}
 		}
 

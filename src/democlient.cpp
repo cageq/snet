@@ -13,6 +13,7 @@ int main(int argc, char *argv[]){
 	tcpClient.start(); 
 
 	auto conn = tcpClient.connect("127.0.0.1", 8888); 
+	conn->enable_reconnect(3000000); 
 
 	while(1){
 
