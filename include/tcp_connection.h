@@ -134,7 +134,9 @@ namespace snet
 			return len;
 		}
 
-		virtual int32_t handle_data(char *data, uint32_t len) { return len; }
+		virtual int32_t handle_data(char *data, uint32_t len) { 
+			return len; 
+		}
 
 		virtual bool handle_event(NetEvent evt) { return true; }
 

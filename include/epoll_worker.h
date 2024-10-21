@@ -82,7 +82,7 @@ namespace snet
                 }
                 else
                 {
-                      printf("mod epoll event success\n");
+                      //printf("mod epoll event success\n");
                 }
                 return ret >= 0;
             }
