@@ -25,6 +25,7 @@
 #include "tcp_factory.h"
 #include "string_thief.h"
 #include "snet_handler.h"
+#include "snet_compat.h"
 
 // inline void string_resize(std::string &str, std::size_t sz)
 //{
@@ -65,7 +66,7 @@ namespace snet
 		 TcpConnection()
 		{
 			(connection_index++); 
-			conn_id = connection_index.load(); 
+			conn_id = connection_index; 
 			send_buffer.reserve(kWriteBufferSize);
 		}
 
@@ -423,13 +424,21 @@ namespace snet
 		template <typename P>
 		inline uint32_t write_data(const P &data)
 		{
+#if __cplusplus  > 201103L
 			send_buffer.append(std::string_view((const char *)&data, sizeof(P)));
+#else 
+			send_buffer.append(std::string((const char *)&data, sizeof(P)));
+#endif // 
 			return send_buffer.size();
 		}
 
 		inline uint32_t write_data(const std::string_view &data)
 		{
+#if __cplusplus  > 201103L
 			send_buffer.append(data);
+#else 
+			send_buffer.append(std::string(data));
+#endif // 
 			return send_buffer.size();
 		}
 
@@ -443,7 +452,11 @@ namespace snet
 		{
 			if (data != nullptr)
 			{
+#if __cplusplus  > 201103L
 				send_buffer.append(std::string_view(data));
+#else 
+				send_buffer.append(std::string(data));
+#endif // 
 				return send_buffer.size();
 			}
 			return 0;
@@ -469,11 +482,20 @@ namespace snet
 		int32_t epoll_events = 0;
 		bool is_passive = true;
 		uint64_t conn_id {0}; // connection id
+#if __cplusplus  > 201103L
 		static std::atomic_int64_t connection_index;
+#else 
+		static uint64_t connection_index;
+#endif // 
 		TcpFactory<T> *factory = nullptr;
 	};
 
+#if __cplusplus  > 201103L
 	template <class T>
 	std::atomic_int64_t TcpConnection<T>::connection_index{1024};
+#else 
+	template <class T>
+	uint64_t TcpConnection<T>::connection_index{1024};
+#endif 
 
 }

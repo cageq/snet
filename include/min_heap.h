@@ -60,9 +60,9 @@ namespace snet
 				auto &top = heap_data[0];
 				std::pop_heap(heap_data.begin(), heap_data.end(), Compare{});
 				heap_data.pop_back();
-				return {true, top};
+				return std::tuple<bool, T>{true, top};
 			}
-			return {false, empty};
+			return std::tuple<bool, T>{false, empty};
 		}
 
 		// T pop() {
@@ -82,9 +82,9 @@ namespace snet
 			std::lock_guard<Mutex> guard(heap_mutex);
 			if (heap_data.empty())
 			{
-				return {false, empty};
+				return std::tuple<bool, T>{false, empty};
 			}
-			return {true, heap_data[0]};
+			return std::tuple<bool, T>{true, heap_data[0]};
 		}
 
 	private:

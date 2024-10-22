@@ -23,5 +23,4 @@ int main(int argc, char *argv[]){
 		printf("send message result %d\n", ret ); 
 
 	}
-
 }
