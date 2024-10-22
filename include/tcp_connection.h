@@ -63,8 +63,11 @@ namespace snet
 			kMaxPackageLimit = 16 * 1024
 		};
 
-		 TcpConnection()
+        TcpConnection()
 		{
+            need_reconnect  = false; 
+            epoll_events = 0;
+		is_passive = true;
 			(connection_index++); 
 			conn_id = connection_index; 
 			send_buffer.reserve(kWriteBufferSize);
@@ -412,14 +415,15 @@ namespace snet
 		uint16_t remote_port;
 		std::string remote_host;
 
-		ConnStatus conn_status = ConnStatus::CONN_IDLE;
+		ConnStatus conn_status { ConnStatus::CONN_IDLE};
 		TcpWorkerPtr tcp_worker;
-		int conn_sd = -1;
 		inline uint64_t get_cid()
 		{
 			return conn_id;
 		}
 
+		int conn_sd = -1;
+		bool need_reconnect ;
 	protected:
 		template <typename P>
 		inline uint32_t write_data(const P &data)
@@ -474,20 +478,19 @@ namespace snet
 			return 0;
 		}
 
-		bool need_reconnect = false;
 		std::mutex write_mutex;
 		std::string send_buffer;
 		std::string cache_buffer;
 
-		int32_t epoll_events = 0;
-		bool is_passive = true;
+		int32_t epoll_events ;
+		bool is_passive ;
 		uint64_t conn_id {0}; // connection id
 #if __cplusplus  > 201103L
 		static std::atomic_int64_t connection_index;
 #else 
 		static uint64_t connection_index;
 #endif // 
-		TcpFactory<T> *factory = nullptr;
+		TcpFactory<T> *factory { nullptr};
 	};
 
 #if __cplusplus  > 201103L
