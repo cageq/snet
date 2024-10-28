@@ -175,7 +175,7 @@ namespace snet
 				conn_status = ConnStatus::CONN_OPEN;
 				this->set_tcpdelay();
 				this->handle_event(NetEvent::EVT_CONNECT);
-				printf("connection is ready %d\n", conn_sd); 
+		
 			}			
 		}
 
