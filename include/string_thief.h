@@ -6,7 +6,7 @@
 namespace snet
 {
 
-#if __cplusplus  >   201103L
+#if __cplusplus  >   201703L
   template <typename Function, Function func_ptr>
   class string_thief
   {
