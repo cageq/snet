@@ -1,3 +1,8 @@
+/*
+ * Author: wkui
+ * Date: 2024-10-15
+ * Desc: a multi raft lib
+ */
 #include "pipe_session.h"
 #include "tcp_pipe.h"
 #include <chrono>

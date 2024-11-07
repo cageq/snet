@@ -1,3 +1,8 @@
+/*
+ * Author: wkui
+ * Date: 2024-10-15
+ * Desc: a multi raft lib
+ */
 #include<stdio.h>
 #include<stdlib.h>
 #include<string.h>
