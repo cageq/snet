@@ -14,8 +14,8 @@ namespace snet
 
 		virtual ~TcpFactory() = default; 
 
-		template <class... Args>
-		ConnectionPtr create(Args &&...args)
+		template < class... Args>
+		ConnectionPtr create(bool passive,Args &&...args)
 		{
 			ConnectionPtr conn;
 			if (connection_creator)
@@ -26,6 +26,7 @@ namespace snet
 			{
 				conn = std::make_shared<Connection>(std::forward<Args>(args)...);
 			}
+			conn->is_passive = passive;
 
 			conn->factory = this; 
 			this->on_create(conn->get_cid(), conn); 

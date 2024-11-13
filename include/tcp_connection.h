@@ -67,7 +67,7 @@ namespace snet
 		{
             need_reconnect  = false; 
             epoll_events = 0;
-		is_passive = true;
+			is_passive = true;
 			(connection_index++); 
 			conn_id = connection_index; 
 			send_buffer.reserve(kWriteBufferSize);

@@ -34,13 +34,21 @@ namespace snet
     TcpConnector(Factory *factory = nullptr, TcpWorkerPtr worker = nullptr)
     {
       connection_factory = factory == nullptr ? this : factory;
-      tcp_worker = worker == nullptr ? std::make_shared<TcpWorker>() : worker;
+      if (worker){
+        tcp_worker = worker;
+      }else {
+        default_worker = std::make_shared<TcpWorker>();
+        tcp_worker = default_worker;
+      }
+      
     }
 
     bool start()
     {
       signal(SIGPIPE, SIG_IGN);
-      tcp_worker->start();
+      if (default_worker ){
+        default_worker->start();
+      }     
  
       return true;
     }
@@ -78,7 +86,7 @@ namespace snet
     template <class... Args>
     ConnectionPtr connect(const std::string &host, uint16_t port, Args &&...args)
     {
-      ConnectionPtr conn = connection_factory->create(std::forward<Args>(args)...); 
+      ConnectionPtr conn = connection_factory->create(false, std::forward<Args>(args)...); 
       conn->need_reconnect = true; 
       conn->tcp_worker = tcp_worker;
       conn->init(0, host, port, false);
@@ -97,6 +105,7 @@ namespace snet
 
     bool is_running = false;
     TcpWorkerPtr tcp_worker;
+    TcpWorkerPtr default_worker; 
     Factory *connection_factory = nullptr;
   };
 

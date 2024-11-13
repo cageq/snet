@@ -149,7 +149,7 @@ namespace snet
 				set_nodelay(clientFd);
 				// set_noblock(clientFd);
 
-				ConnectionPtr conn  = connection_factory->create();
+				ConnectionPtr conn  = connection_factory->create (true);
 
 				auto worker = get_worker();
 				conn->tcp_worker = worker;
