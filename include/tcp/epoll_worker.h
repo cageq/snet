@@ -10,6 +10,7 @@
 #include <stdint.h>
 #include <time.h>
 #include <vector>
+#include <cassert>
 #include "utils/heap_timer.h"
 
 #define MAX_WAIT_EVENT 128
@@ -83,6 +84,8 @@ namespace snet
 						if (ret == -1)
 						{
 							printf("mod epoll event error");
+							::close(sd); 
+							assert(false); 
 						}
 						else
 						{
@@ -159,8 +162,14 @@ namespace snet
 						if (ret < 0)
 						{
 							printf("wait error , errno is %d\n", errno);
-							continue;
+
+							 if (errno == EINTR) {
+								continue;
+							 }
+							
 						}
+
+						//printf("working ............... %d\n",ret);
 
 						for (int i = 0; i < ret; i++)
 						{

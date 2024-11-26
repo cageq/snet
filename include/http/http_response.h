@@ -104,4 +104,4 @@ namespace snet
 		using HttpResponsePtr = std::shared_ptr<HttpResponse>;
 
 	} // namespace http
-} // namespace knet
+} // namespace snet

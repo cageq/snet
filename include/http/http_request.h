@@ -93,4 +93,4 @@ namespace snet {
 		using HttpRequestPtr = std::shared_ptr<HttpRequest>;
 
 	} // namespace http
-} // namespace knet
+} // namespace snet

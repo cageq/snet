@@ -13,7 +13,7 @@ using namespace snet::tcp;
 namespace snet {
 namespace http {
 
-class HttpClient : public KNetFactory<HttpConnection> {
+class HttpClient : public TcpFactory<HttpConnection> {
 
 public:
 	using HttpConnector = TcpConnector<HttpConnection, HttpClient>;
@@ -44,7 +44,7 @@ public:
 
 		auto req = std::make_shared<HttpRequest>(HttpMethod::HTTP_GET, url); 
 		
-		KNetUrl urlInfo("tcp", httpUrl.host(), httpUrl.port()) ; 
+		NetUrl urlInfo("tcp", httpUrl.host(), httpUrl.port()) ; 
  
 		auto conn = connector.add_connection(urlInfo, req );
 		

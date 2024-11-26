@@ -179,7 +179,7 @@ namespace snet
 				if (conn_status == ConnStatus::CONN_IDLE)
 				{
 					conn_status = ConnStatus::CONN_OPEN;
-					this->set_tcpdelay();
+					// this->set_tcpdelay();
 					this->handle_event(NetEvent::EVT_CONNECT);
 				}
 			}
@@ -208,15 +208,24 @@ namespace snet
 
 			void close()
 			{
-				do_close();
+				static uint32_t close_count = 0; 
+				if (conn_status < ConnStatus::CONN_CLOSING)
+				{
+					conn_status = ConnStatus::CONN_CLOSING; 
+					//notify_send();
+
+					printf("close count %d\n", ++close_count);
+					shutdown(conn_sd,SHUT_RD);
+					tcp_worker->mod_event(this->conn_sd, this, EPOLLOUT);
+				}
 			}
 
 			void do_close()
 			{
-				if (conn_status < ConnStatus::CONN_CLOSING)
-				{
-					conn_status = ConnStatus::CONN_CLOSING;
-
+				
+				if (conn_status == ConnStatus::CONN_CLOSING)
+				{ 
+					 
 					if (tcp_worker)
 					{
 						tcp_worker->del_event(this->conn_sd);
@@ -232,7 +241,9 @@ namespace snet
 
 						if (conn_sd > 0)
 						{
-							printf("close socket %d\n", conn_sd); 
+							static uint32_t close_count = 0; 
+							printf("close socket %d count %d\n", conn_sd, ++close_count); 
+						
 							::close(conn_sd);
 							conn_sd = -1;
 						}
@@ -240,6 +251,7 @@ namespace snet
 						if (factory)
 						{
 							factory->delay_release(this->shared_from_this());
+							// factory->remove_connection(this->get_cid());
 						}
 					}
 				}
@@ -301,7 +313,7 @@ namespace snet
 						else
 						{
 							perror("send failed");
-							do_close();
+							close();
 						}
 						return;
 					}
@@ -318,6 +330,8 @@ namespace snet
 					// send until all buffer is empty
 					do_send();
 				}
+
+				do_close();
 			}
 
 			int32_t do_read()
@@ -336,7 +350,7 @@ namespace snet
 						else
 						{
 							perror("recv failed");
-							this->do_close();
+							this->close();
 							return -1;
 						}
 						// if zero, try to read again?
@@ -345,7 +359,7 @@ namespace snet
 
 					if (rc == 0)
 					{
-						this->do_close();
+						this->close();
 						return -1;
 					}
 					len = rc;
@@ -368,7 +382,7 @@ namespace snet
 					{
 						if (pkgLen > kReadBufferSize)
 						{
-							this->do_close();
+							this->close();
 							return false;
 						}
 						break;
@@ -403,23 +417,20 @@ namespace snet
 					int ret = this->do_read();
 					if (ret > 0)
 					{
-						// epoll_events |=   EPOLLIN;
-						// tcp_worker->mod_event(static_cast<T *>(this), epoll_events );
+						 epoll_events |=   EPOLLIN;
+						 tcp_worker->mod_event(this->conn_sd,this, epoll_events );
 					}
 				}
 
 				if (EPOLLOUT == (evts & EPOLLOUT))
-				{
-					if (is_open())
-					{
-						this->do_send();
-					}
+				{ 
+					this->do_send(); 
 				}
 
 				if (EPOLLERR == (evts & EPOLLERR))
 				{
 					printf("EPOLLERROR event %d ", evts);
-					this->do_close();
+					this->close();
 				}
 			}
 

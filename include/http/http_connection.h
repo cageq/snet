@@ -152,7 +152,7 @@ namespace snet
 							if (rst < 0){
 								
 								conn->write(HttpResponse(501));
-							} printf("process request result %d\n", rst); 
+							}  
 							 
 						}
 						else

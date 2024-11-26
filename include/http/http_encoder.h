@@ -72,13 +72,16 @@ namespace snet
 						fmt::format_to(std::back_inserter(msgBuf), FMT_STRING("{}: {}\r\n"), h.first, h.second);
 					}
 				}
-				fmt::format_to(std::back_inserter(msgBuf), FMT_STRING("Server: KNet Http Server v0.1\r\n"));
+				fmt::format_to(std::back_inserter(msgBuf), FMT_STRING("Server: SNet Http Server v0.1\r\n"));
 
 				time_t now = std::time(0);
 				fmt::format_to(std::back_inserter(msgBuf), FMT_STRING("Date: {:%a, %d %b %Y %H:%M:%S %Z}\r\n"), fmt::localtime(now));
 
 				fmt::format_to(std::back_inserter(msgBuf), FMT_STRING("\r\n{}"), coder->http_message->content);
-				return fmt::to_string(msgBuf);
+
+				auto rst = fmt::to_string(msgBuf);
+				//printf("encode http response result \n%s\n", rst.c_str());
+				return rst;
 			}
 			XCoder *coder;
 		};

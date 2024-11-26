@@ -104,12 +104,11 @@ namespace snet
 
 				listen_worker->add_event(listen_sd, this);
 
-				listen_worker->start_timer([this]()
-										   {
+				listen_worker->start_timer([this]()  {
 				if (connection_factory){
 					connection_factory->clear_released();
 				}				
-				return true; }, 10000, true);
+				return true; }, 1000, true);
 				return 0;
 			}
 
@@ -168,7 +167,7 @@ namespace snet
 					}
 
 					set_nodelay(clientFd);
-					// set_noblock(clientFd);
+					set_noblock(clientFd);
 
 					ConnectionPtr conn = connection_factory->create(true);
 
@@ -179,7 +178,9 @@ namespace snet
 					inet_ntop(AF_INET, &cliAddr.sin_addr, remoteHost, sizeof(remoteHost));
 					int32_t remotePort = ntohs(cliAddr.sin_port);
 
-					printf("accept new connection from %s:%u\n", remoteHost, remotePort);
+					static uint32_t accept_count =0;
+
+					printf("accept new connection from %s:%u count %d\n", remoteHost, remotePort, ++accept_count);
 					conn->init(clientFd, remoteHost, remotePort, true);
 
 					worker->add_event(clientFd, conn.get());
