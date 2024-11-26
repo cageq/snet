@@ -67,7 +67,7 @@ namespace snet
 			{
 				if (this->is_connected())
 				{
-					this->send(rsp.to_string());
+					this->send(rsp.dump());
 				}
 				// if (rsp.code() >= 200)
 				// {
@@ -130,6 +130,7 @@ namespace snet
 					//} 
 	 
 					ctx->response.writer = [=](const std::string &data){
+						printf("send response :\n%s\n", data.c_str()); 
 						return conn->send(data); 						
 					}; 
 
@@ -149,15 +150,17 @@ namespace snet
 							auto rst = handler.call(ctx);  
 
 							if (rst < 0){
+								
 								conn->write(HttpResponse(501));
-							} 
-							conn->close(); 
+							} printf("process request result %d\n", rst); 
+							 
 						}
 						else
 						{
 							conn->write(HttpResponse(404));
-							conn->close(); 
+						
 						}
+						conn->close(); 
 					}
 				}
 

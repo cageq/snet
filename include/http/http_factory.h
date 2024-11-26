@@ -13,7 +13,7 @@ namespace snet
         {
 
         public:
-            using TPtr = std::shared_ptr<T>;
+            using ConnectionPtr = std::shared_ptr<T>;
 
             inline void register_global_router(const HttpHandler &router)
             {
@@ -42,7 +42,8 @@ namespace snet
                 http_routers[path].context_handler = handler;	  
             }
 
-            virtual void on_create(TPtr conn) {
+            virtual void on_create(uint64_t cid, ConnectionPtr conn) override 
+            {
                 conn->init_routers(global_router, &http_routers); 
             } 
 

@@ -75,8 +75,9 @@ namespace snet
 
 			virtual ~TcpConnection() = default;
 
-			int32_t send(const std::string & data){
-				return send(data.data(), data.length()); 
+			int32_t send(const std::string &data)
+			{
+				return msend(data);
 			}
 			int32_t send(const char *data, uint32_t dataLen)
 			{
@@ -196,10 +197,13 @@ namespace snet
 			{
 				tcp_worker->stop_timer(timerId);
 			}
-			bool is_connected(){
-
-				return conn_status == ConnStatus::CONN_OPEN; 
-
+			bool is_connected()
+			{
+				if (conn_sd > 0)
+				{
+					return conn_status == ConnStatus::CONN_OPEN;
+				}
+				return false;
 			}
 
 			void close()
@@ -228,6 +232,7 @@ namespace snet
 
 						if (conn_sd > 0)
 						{
+							printf("close socket %d\n", conn_sd); 
 							::close(conn_sd);
 							conn_sd = -1;
 						}
@@ -432,7 +437,7 @@ namespace snet
 			}
 
 			int conn_sd = -1;
-			bool need_reconnect;
+			bool need_reconnect = false ;
 
 		protected:
 			template <typename P>

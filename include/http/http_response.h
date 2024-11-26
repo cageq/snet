@@ -47,14 +47,24 @@ namespace snet
 				if (writer)
 				{
 					http_encoder.set_content_type("application/json");  
-					return writer(to_string());
+					return writer(dump());
 				}
 				return -1 ; 
 			}
 
+			int32_t  text(const std::string & msg ){ 
+				if (writer)
+				{
+					http_encoder.set_content_type("text/html; charset=UTF-8");  
+					return writer(dump());
+				}
+				return -1 ; 
+			}
+
+
 			inline uint32_t code() const { return status_code; }
 
-			inline std::string to_string() const { return http_encoder.encode(); }
+			inline std::string dump() const { return http_encoder.encode(); }
 
 			inline bool is_websocket() const
 			{
@@ -67,7 +77,8 @@ namespace snet
 				if (writer){
 					status_code = status_code  == 0? code: status_code; 				
 					http_encoder.set_content(msg); 
-					return writer(to_string()); 
+					http_encoder.set_content_type("text/html; charset=UTF-8"); 
+					return writer(dump()); 
 				}
 				return -1; 
 			}
@@ -75,7 +86,7 @@ namespace snet
 			int32_t write(){
 				if (writer){
 					status_code = status_code  == 0? 200:status_code; 
-					return writer(to_string()); 
+					return writer(dump()); 
 				}
 				return -1; 
 			}
