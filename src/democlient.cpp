@@ -3,6 +3,7 @@
  * Date: 2024-10-15
  * Desc: a multi raft lib
  */
+#include "snet.h"
 #include "tcp_connector.h"
 #include "user_session.h"
 #include <chrono>

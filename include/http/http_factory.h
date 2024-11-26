@@ -1,14 +1,15 @@
 #pragma once
 
 #include "http_connection.h"
- 
+#include "tcp_factory.h" 
+using namespace snet::tcp; 
 
 namespace snet
 {
     namespace http
     {
         template <class T = HttpConnection>
-        class HttpFactory : public KNetFactory<T> 
+        class HttpFactory : public TcpFactory<T> 
         {
 
         public:

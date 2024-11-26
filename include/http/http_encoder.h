@@ -176,14 +176,14 @@ namespace snet
 			// 			fmt::format_to(msgBuf, "\r\n{}", content);
 			// 		}
 
-			//         knet_dlog("send response : \n{}", fmt::to_string(msgBuf));
+			//         snet_dlog("send response : \n{}", fmt::to_string(msgBuf));
 			// 		return fmt::to_string(msgBuf);
 			// 	} else {
 			// 		auto body = status_strings::to_string(status_code);
 			// 		fmt::format_to(msgBuf, "Content-Type: {}\r\n", mime_types::to_mime("txt"));
 			// 		fmt::format_to(msgBuf, "Content-Length: {}\r\n", body.length());
 			// 		fmt::format_to(msgBuf, "\r\n{}", body);
-			// 		knet_dlog("send response : \n{}", fmt::to_string(msgBuf));
+			// 		snet_dlog("send response : \n{}", fmt::to_string(msgBuf));
 			// 		return fmt::to_string(msgBuf);
 			// 	}
 			// }

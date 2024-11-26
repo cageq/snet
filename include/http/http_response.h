@@ -1,10 +1,10 @@
 #pragma once
 #include <memory>
 #include <functional>
-#include "http_message.hpp"
-#include "http_decoder.hpp"
+#include "http_message.h"
+#include "http_decoder.h"
 
-namespace knet
+namespace snet
 {
 	namespace http
 	{

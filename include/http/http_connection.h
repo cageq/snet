@@ -98,7 +98,7 @@ namespace snet
 				return -1;
 			}
 
-			virtual bool handle_data(char * data, uint32_t dataLen) override 
+			virtual int32_t handle_data(char * data, uint32_t dataLen) override 
 			{
 				auto ctx = std::make_shared<HttpContext>();  
 				auto msgLen = ctx->request.parse(data, dataLen);
@@ -161,7 +161,7 @@ namespace snet
 					}
 				}
 
-				return true;
+				return 1;
 			}
 
 		private:

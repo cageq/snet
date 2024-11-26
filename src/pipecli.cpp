@@ -3,11 +3,12 @@
  * Date: 2024-10-15
  * Desc: a multi raft lib
  */
+
+#include "snet.h"
 #include "pipe_session.h"
 #include "tcp_pipe.h"
 
-
-using namespace snet; 
+using namespace snet::pipe; 
 
 
 class UserSession : public PipeSession<UserSession> {

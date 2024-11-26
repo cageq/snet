@@ -3,12 +3,12 @@
 #include "snet.h"
 #include "http_request.h"
 #include "http_factory.h"
-
+#include "epoll_worker.h"
 namespace snet
 {
 	namespace http
 	{
-		template <class Worker = snet::KNetWorker, class Factory = HttpFactory<HttpConnection>>
+		template <class Worker = snet::tcp::SNetWorker, class Factory = HttpFactory<HttpConnection>>
 		class HttpServer : public HttpFactory<HttpConnection>
 		{
 		public:
@@ -40,8 +40,9 @@ namespace snet
 
 			bool start(uint16_t port = 8888, const std::string &host = "0.0.0.0", const NetOptions & netOpts = {})
 			{
-				knet_dlog("start http server {}:{}", host, port);
-				http_listener.start({"tcp", host, port}, netOpts);
+				snet_dlog("start http server {}:{}", host, port);
+				auto url = "tcp://" + host +":" + std::to_string(port); 
+				http_listener.start(url, netOpts);
 				return true;
 			}
 			void stop()

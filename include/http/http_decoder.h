@@ -1,7 +1,6 @@
 #pragma once
-#include "utils/knet_log.h"
 #include "http_parser.h"
-#include "utils/knet_log.h"
+#include "utils/snet_log.h"
  
 using namespace snet::log; 
 namespace snet
@@ -42,11 +41,11 @@ namespace snet
 			static int parse_url(http_parser *parser, const char *pos, size_t length)
 			{
 				XCoder *self = static_cast<XCoder *>(parser->data);
-				// knet_dlog("handle url callback {} ", std::string(pos, length));
+				// snet_dlog("handle url callback {} ", std::string(pos, length));
 				if (self)
 				{
 					self->request_url = std::string(pos, length);
-					// knet_dlog("parsed request url is {}", self->request_url);
+					// snet_dlog("parsed request url is {}", self->request_url);
 					self->http_message->http_url = std::string(pos, length);
 				}
 				return 0;
@@ -60,20 +59,20 @@ namespace snet
 					http_parser_parse_url(self->request_url.data(), self->request_url.size(), 0, &urlInfo);
 				if (result != 0)
 				{
-					knet_elog("parser url failed");
+					snet_elog("parser url failed");
 					return 0;
 				}
 
 				if (!(urlInfo.field_set & (1 << UF_PATH)))
 				{
-					knet_elog("parse path failed");
+					snet_elog("parse path failed");
 					return -1;
 				}
 
 				self->http_path = std::string_view(self->request_url.data() + urlInfo.field_data[UF_PATH].off,
 												   urlInfo.field_data[UF_PATH].len);
 
-				knet_dlog("http request path is {}", self->http_path);
+				snet_dlog("http request path is {}", self->http_path);
 
 				if (urlInfo.field_set & (1 << UF_QUERY))
 				{
@@ -177,10 +176,10 @@ namespace snet
 
 			// static int parse_url(http_parser* parser, const char* pos, size_t length) {
 			// 	HttpDecoder* self = static_cast<HttpDecoder*>(parser->data);
-			// 	knet_dlog("handle url callback {} ", std::string(pos, length));
+			// 	snet_dlog("handle url callback {} ", std::string(pos, length));
 			// 	if (self) {
 			// 		self->request_url = std::string(pos, length);
-			// 		knet_dlog("parsed request url is {}", self->request_url);
+			// 		snet_dlog("parsed request url is {}", self->request_url);
 			// 		self->http_message->uri = std::string(pos, length);
 			// 	}
 			// 	return 0;
@@ -190,7 +189,7 @@ namespace snet
 			{
 				HttpDecoder *self = (HttpDecoder *)hp->data;
 				self->parse_header.key = std::string_view(at, len);
-				knet_dlog("parse field {}", self->parse_header.key);
+				snet_dlog("parse field {}", self->parse_header.key);
 				return 0;
 			}
 
@@ -199,7 +198,7 @@ namespace snet
 				HttpDecoder *self = (HttpDecoder *)hp->data;
 				self->parse_header.value = std::string_view(at, len);
 				self->headers.emplace_back(self->parse_header);
-				knet_dlog("parse field {}", self->parse_header.value);
+				snet_dlog("parse field {}", self->parse_header.value);
 				return 0;
 			}
 
@@ -217,19 +216,19 @@ namespace snet
 			// 	const int result =
 			// 		http_parser_parse_url(self->request_url.data(), self->request_url.size(), 0, &urlInfo);
 			// 	if (result != 0) {
-			// 		knet_elog("parser url failed");
+			// 		snet_elog("parser url failed");
 			// 		return 0;
 			// 	}
 
 			// 	if (!(urlInfo.field_set & (1 << UF_PATH))) {
-			// 		knet_elog("parse path failed");
+			// 		snet_elog("parse path failed");
 			// 		return -1;
 			// 	}
 
 			// 	self->http_path =  std::string_view(self->request_url.data() + urlInfo.field_data[UF_PATH].off,
 			// 			urlInfo.field_data[UF_PATH].len);
 
-			// 	knet_dlog("http request path is {}", self->http_path);
+			// 	snet_dlog("http request path is {}", self->http_path);
 
 			// 	if (urlInfo.field_set & (1 << UF_QUERY)) {
 			// 		self->http_query = std::string_view(self->request_url.data() + urlInfo.field_data[UF_QUERY].off,
@@ -241,18 +240,18 @@ namespace snet
 
 			static int parse_message_begin(http_parser *hp)
 			{
-				knet_dlog("parse message begin");
+				snet_dlog("parse message begin");
 				return 0;
 			}
 			static int parse_message_complete(http_parser *hp)
 			{
-				knet_dlog("parse message complete");
+				snet_dlog("parse message complete");
 				return 0;
 			}
 
 			static int parse_chunk_header(http_parser *hp)
 			{
-				knet_dlog("chunk content length {}", hp->content_length);
+				snet_dlog("chunk content length {}", hp->content_length);
 				return 0;
 			}
 

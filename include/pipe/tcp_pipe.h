@@ -11,8 +11,11 @@
 #include <unistd.h>
 #include <unordered_map>
 
+using namespace snet::tcp; 
 namespace snet
 {
+	namespace pipe{
+		
 
 	template <class UserSession>
 	class TcpPipe
@@ -76,4 +79,5 @@ namespace snet
 		PipeMode pipe_mode;
 	};
 
+	}
 }

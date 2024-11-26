@@ -1,14 +1,14 @@
 #pragma once
 
-#include "http_decoder.hpp"
-#include "http_encoder.hpp"
-#include "http_response.hpp"
+#include "http_decoder.h"
+#include "http_encoder.h"
+#include "http_response.h"
 
 #include <string>
 #include <memory>
 #include <functional>
 
-namespace knet {
+namespace snet {
 	namespace http {
 
 		class HttpRequest {
