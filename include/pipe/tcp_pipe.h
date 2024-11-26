@@ -1,12 +1,12 @@
 #pragma once
 
-#include "tcp_connector.h"
-#include "tcp_connection.h"
-#include "tcp_listener.h"
+#include "tcp/tcp_connection.h"
+#include "tcp/tcp_connector.h"
+#include "tcp/tcp_listener.h"
 
-#include "pipe_connection.h"
-#include "pipe_factory.h"
-#include "pipe_session.h"
+#include "pipe/pipe_connection.h"
+#include "pipe/pipe_factory.h"
+#include "pipe/pipe_session.h"
 #include <memory>
 #include <unistd.h>
 #include <unordered_map>

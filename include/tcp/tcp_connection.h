@@ -23,9 +23,9 @@
 
 #include "epoll_worker.h"
 #include "tcp_factory.h"
-#include "string_thief.h"
+#include "utils/string_thief.h"
+#include "utils/snet_compat.h"
 #include "snet_handler.h"
-#include "snet_compat.h"
 
 // inline void string_resize(std::string &str, std::size_t sz)
 //{

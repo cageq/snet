@@ -1,9 +1,8 @@
 #pragma once
 
-#include "snet.h"
 #include "http_request.h"
 #include "http_factory.h"
-#include "epoll_worker.h"
+#include "tcp/epoll_worker.h"
 namespace snet
 {
 	namespace http

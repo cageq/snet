@@ -1,6 +1,6 @@
 #pragma once
 #include "pipe_factory.h"
-#include "tcp_connection.h"
+#include "tcp/tcp_connection.h"
 
 namespace snet
 {

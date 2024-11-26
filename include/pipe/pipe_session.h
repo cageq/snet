@@ -1,9 +1,9 @@
 #pragma once
-#include "pipe_connection.h"
-#include "tcp_connection.h"
 #include <inttypes.h>
 #include <memory>
 #include <vector>
+#include "pipe_connection.h"
+#include "tcp/tcp_connection.h"
 
 namespace snet
 {

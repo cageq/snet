@@ -47,7 +47,8 @@ namespace snet
 
 
 
-#include "tcp_connection.h"
-#include "tcp_listener.h"
-#include "tcp_connector.h"
-#include "tcp_pipe.h"
+#include "tcp/tcp_connection.h"
+#include "tcp/tcp_listener.h"
+#include "tcp/tcp_connector.h"
+#include "pipe/tcp_pipe.h"
+#include "http/http_server.h"
