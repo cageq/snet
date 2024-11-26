@@ -8,7 +8,7 @@ public:
   {
     printf("destroy user session \n");
   }
-  virtual bool handle_event(NetEvent evt) override
+  virtual bool handle_event(snet::NetEvent evt) override
   {
 
     printf("handle event in session  %d\n", evt);
