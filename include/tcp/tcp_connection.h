@@ -250,8 +250,12 @@ namespace snet
 				
 						if (factory)
 						{
-							factory->delay_release(this->shared_from_this());
-							// factory->remove_connection(this->get_cid());
+							auto self = this->shared_from_this(); 
+							tcp_worker->post_task([self ](){
+								self->factory->remove_connection(self->get_cid());
+							}); 
+						 
+							 
 						}
 					}
 				}

@@ -105,11 +105,7 @@ namespace snet
 				//listen_worker->add_event(listen_sd, this,   EPOLLIN  | EPOLLERR );
 				listen_worker->add_event(listen_sd, this,   EPOLLIN  | EPOLLERR );
 
-				listen_worker->start_timer([this]()  {
-				if (connection_factory){
-					connection_factory->clear_released();
-				}				
-				return true; }, 1000, true);
+	 
 				return 0;
 			}
 
@@ -185,7 +181,7 @@ namespace snet
 					conn->init(clientFd, remoteHost, remotePort, true);
 
 					worker->add_event(clientFd, conn.get() );
-					conn->on_ready();
+					//conn->on_ready();
 				}
 			}
 

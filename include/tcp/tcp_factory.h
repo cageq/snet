@@ -73,14 +73,7 @@ namespace snet
 				std::lock_guard<std::mutex> guard(connection_map_mutex);
 				return connection_map.erase(cid);
 			}
-			void delay_release(ConnectionPtr conn)
-			{
-
-				std::lock_guard<std::mutex> guard(connection_map_mutex);
-				connection_map.erase(conn->get_cid());
-				released_connections.clear();
-				released_connections.push_back(conn);
-			}
+	 
 
 			ConnectionPtr find_connection(uint64_t cid)
 			{
@@ -93,20 +86,14 @@ namespace snet
 
 				return nullptr;
 			}
-
-			void clear_released()
-			{
-
-				std::lock_guard<std::mutex> guard(connection_map_mutex);
-				released_connections.clear();
-			}
+ 
 
 			std::function<ConnectionPtr()> connection_creator;
 			std::function<void(uint64_t, ConnectionPtr)> connection_releaser;
 
 			std::mutex connection_map_mutex;
 			std::unordered_map<uint64_t, ConnectionPtr> connection_map;
-			std::vector<ConnectionPtr> released_connections;
+ 
 		};
 
 	}

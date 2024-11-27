@@ -30,6 +30,8 @@ namespace snet
 		class EpollWorker : public HeapTimer<std::chrono::microseconds>
 		{
 			public:
+
+				using EpollTask = std::function<void()>; 
 				int32_t start()
 				{ 
 					epoll_fd = epoll_create(10);
@@ -176,7 +178,8 @@ namespace snet
 							int evfd = waitEvents[i].data.fd;
 							if (evfd == timer_fd)
 							{
-								add_timer(true,timer_loop() );  
+								auto nextExpire = timer_loop(); 
+								add_timer(true, nextExpire.count() );  
 								continue;
 							}
 
@@ -190,11 +193,19 @@ namespace snet
 								printf("no found connection \n");
 							}
 						}
+						for(auto & task :tasks){
+							task(); 
+						}
+						tasks.clear();
 
 					} // end while
 
 					printf("quit process thread");
 					return 0;
+				}
+
+				void post_task(EpollTask task){
+					tasks.push_back(task);
 				}
 
 				void stop()
@@ -203,6 +214,7 @@ namespace snet
 					epoll_thread.join();
 				}
 
+				std::vector<EpollTask> tasks;
 				int timer_fd = -1;
 				bool is_running = false;
 				int epoll_fd = -1;

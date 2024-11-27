@@ -12,7 +12,7 @@ namespace snet
 
 	namespace utils
 	{
-		using TimePoint = std::chrono::time_point<std::chrono::system_clock>;
+		// using TimePoint = std::chrono::time_point<std::chrono::system_clock>;
 
 		template <class T>
 		struct TimeUnit
@@ -38,9 +38,11 @@ namespace snet
 			constexpr static const char *short_notion = "s";
 		};
 
-		inline static TimePoint get_now()
+		template <class TimeScale>
+		inline static TimeScale get_now()
 		{
-			return std::chrono::system_clock::now();
+			  auto now = std::chrono::system_clock::now();
+    		return std::chrono::duration_cast<TimeScale>(now.time_since_epoch());
 		}
 
 		using TimerHandler = std::function<bool()>;
@@ -56,15 +58,15 @@ namespace snet
 				handler = h;
 				interval = t;
 				loop = l;
-				expire_time = get_now() + TimeScale(t);
+				expire_time = get_now<TimeScale>() + TimeScale(t);
 			}
 
-			uint32_t timer_id = 0;
+			uint64_t  timer_id = 0;
 			TimerHandler handler = nullptr;
 			int32_t interval = 0;
 			bool loop = true;
 			bool stopped = false;
-			TimePoint expire_time;
+			TimeScale expire_time;
 		};
 
 		template <class TimeScale>
@@ -129,7 +131,7 @@ namespace snet
 				{
 					if (node->loop && !node->stopped)
 					{
-						node->expire_time += TimeScale(node->interval);
+						node->expire_time = get_now<TimeScale>() + TimeScale(node->interval);
 						heap_tree.insert(node);
 					}
 				}
@@ -142,9 +144,9 @@ namespace snet
 			}
 
 			// return microseconds
-			uint32_t timer_loop()
+			TimeScale timer_loop()
 			{
-				auto cur = get_now();
+				auto cur = get_now<TimeScale>();
 				bool hasTop = false;
 				TimerNodePtr node = nullptr;
 				std::tie(hasTop, node) = heap_tree.top();
@@ -162,7 +164,7 @@ namespace snet
 						// printf("\n");
 					}
 					std::tie(hasTop, node) = heap_tree.top();
-					cur = get_now();
+					cur = get_now<TimeScale>();
 				}
 
 				if (node)
@@ -170,7 +172,16 @@ namespace snet
 					if (node->expire_time > cur)
 					{
 						auto nextExpire = node->expire_time - cur;
-						return std::chrono::duration_cast<std::chrono::microseconds>(nextExpire).count();
+
+
+						if ( node->expire_time  > cur){
+
+							return node->expire_time - cur;
+						}
+
+						return TimeScale(1);
+
+ 
 					}
 					else
 					{
@@ -181,14 +192,14 @@ namespace snet
 				{
 					// std::this_thread::sleep_for(TimeScale(1));
 				}
-				return 100; // default 100ms
+				return TimeScale{1};  
 			}
 
 		private:
 			static const uint32_t base_timer_index = 1024;
 			uint32_t add_timer(TimerNodePtr node)
 			{
-				static uint32_t timer_index = base_timer_index;
+				static std::atomic_uint64_t timer_index = base_timer_index;
 				node->timer_id = timer_index++;
 				heap_tree.insert(node);
 
