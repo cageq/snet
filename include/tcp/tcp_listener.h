@@ -285,9 +285,12 @@ namespace snet
 
 			TcpWorkerPtr get_worker()
 			{
-				worker_index++;
-				worker_index = worker_index % tcp_workers.size();
-				return tcp_workers[worker_index];
+				if (tcp_workers.size() > 0){
+					worker_index++;
+					worker_index = worker_index % tcp_workers.size();
+					return tcp_workers[worker_index];
+				}
+				return listen_worker;				
 			}
 
 			uint32_t worker_index = 0;

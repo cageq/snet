@@ -211,9 +211,7 @@ namespace snet
 				if (conn_status < ConnStatus::CONN_CLOSING)
 				{
 					conn_status = ConnStatus::CONN_CLOSING; 
-					//notify_send();
-
-					printf("close count %d\n", ++close_count);
+					//notify_send(); 
 					shutdown(conn_sd,SHUT_RD);
 					tcp_worker->mod_event(this->conn_sd, this, EPOLLOUT);
 				}

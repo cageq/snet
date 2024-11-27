@@ -86,8 +86,7 @@ namespace snet
 						if (ret == -1)
 						{
 							printf("mod epoll event error");
-							::close(sd); 
-							assert(false); 
+							::close(sd);  
 						}
 						else
 						{
