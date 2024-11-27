@@ -58,7 +58,7 @@ namespace snet
 			using TcpWorkerPtr = std::shared_ptr<TcpWorker>;
 			enum
 			{
-				kReadBufferSize = 1024 * 1024 * 8,
+				kReadBufferSize  = 1024 * 1024 * 8,
 				kWriteBufferSize = 1024 * 1024 * 8,
 				kMaxPackageLimit = 16 * 1024
 			};
@@ -98,14 +98,13 @@ namespace snet
 			{
 				need_reconnect = true;
 
-				tcp_worker->start_timer([this]()
-										{ 
+				tcp_worker->start_timer([this]() { 
 		 
-					if (!is_open()){
-						
+					if (!is_open()){ 
 						do_connect(); 
 					}
-					return true; }, interval, true);
+					return true; 
+				}, interval, true);
 			}
 
 			void set_tcpdelay()
@@ -225,6 +224,7 @@ namespace snet
 				
 				if (conn_status == ConnStatus::CONN_CLOSING)
 				{ 
+					conn_status = ConnStatus::CONN_CLOSED;
 					 
 					if (tcp_worker)
 					{
@@ -247,7 +247,7 @@ namespace snet
 							::close(conn_sd);
 							conn_sd = -1;
 						}
-						conn_status = ConnStatus::CONN_CLOSED;
+				
 						if (factory)
 						{
 							factory->delay_release(this->shared_from_this());

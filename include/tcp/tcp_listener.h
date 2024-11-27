@@ -102,7 +102,8 @@ namespace snet
 				do_bind(port, host.c_str());
 				do_listen();
 
-				listen_worker->add_event(listen_sd, this);
+				//listen_worker->add_event(listen_sd, this,   EPOLLIN  | EPOLLERR );
+				listen_worker->add_event(listen_sd, this,   EPOLLIN  | EPOLLERR );
 
 				listen_worker->start_timer([this]()  {
 				if (connection_factory){
@@ -183,7 +184,7 @@ namespace snet
 					printf("accept new connection from %s:%u count %d\n", remoteHost, remotePort, ++accept_count);
 					conn->init(clientFd, remoteHost, remotePort, true);
 
-					worker->add_event(clientFd, conn.get());
+					worker->add_event(clientFd, conn.get() );
 					conn->on_ready();
 				}
 			}

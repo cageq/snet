@@ -14,7 +14,7 @@ namespace snet
 			using WorkerPtr = std::shared_ptr<Worker>;
 
 			// it's easy to use raw pointer of Factory
-			HttpServer(Factory *fac = nullptr, WorkerPtr lisWorker = nullptr, uint32_t workerNum = 4)
+			HttpServer(Factory *fac = nullptr, WorkerPtr lisWorker = nullptr, uint32_t workerNum = 1)
 				: http_factory(fac == nullptr ? this : fac), http_listener(http_factory, lisWorker)
 			{
 				for (uint32_t i = 0; i < workerNum; i++)
