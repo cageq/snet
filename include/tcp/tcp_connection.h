@@ -425,8 +425,8 @@ namespace snet
 					int ret = this->do_read();
 					if (ret > 0)
 					{
-						 epoll_events |=   EPOLLIN;
-						 tcp_worker->mod_event(this->conn_sd,this, epoll_events );
+						//  epoll_events |=   EPOLLIN;
+						//  tcp_worker->mod_event(this->conn_sd,this, epoll_events );
 					}
 				}
 
