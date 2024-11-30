@@ -310,7 +310,9 @@ namespace snet
 					{
 						if (errno == EAGAIN || errno == EWOULDBLOCK)
 						{
-							do_send();
+							// printf("send buffer full\n");
+							epoll_events |= EPOLLOUT;
+							tcp_worker->mod_event(this->conn_sd,this, epoll_events );
 						}
 						else
 						{
@@ -322,7 +324,7 @@ namespace snet
 					else if (rc > 0 && (uint32_t)rc < cache_buffer.size())
 					{
 						cache_buffer.erase(0, rc);
-						// do_send();
+						//do_send();
 					}
 					else
 					{
@@ -333,6 +335,7 @@ namespace snet
 					do_send();
 				}
 
+				//do check closing state 
 				do_close();
 			}
 
@@ -347,7 +350,8 @@ namespace snet
 					{
 						if (errno == EAGAIN || errno == EWOULDBLOCK)
 						{
-							do_read();
+							//read finished
+							//do_read();
 						}
 						else
 						{
@@ -368,6 +372,8 @@ namespace snet
 				}
 
 				this->process_data(len);
+
+				do_read(); 
 				return len;
 			}
 
