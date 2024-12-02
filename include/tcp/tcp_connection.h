@@ -436,7 +436,7 @@ namespace snet
 				}
 			}
 
-			char read_buffer[kReadBufferSize];
+			char read_buffer[kReadBufferSize + 64];
 			int32_t read_buffer_pos = 0;
 
 			uint16_t remote_port;
