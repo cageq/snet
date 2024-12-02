@@ -310,7 +310,9 @@ namespace snet
 					{
 						if (errno == EAGAIN || errno == EWOULDBLOCK)
 						{
-							do_send();
+							// printf("send buffer full\n");
+							epoll_events |= EPOLLOUT;
+							tcp_worker->mod_event(this->conn_sd,this, epoll_events );
 						}
 						else
 						{
@@ -322,7 +324,7 @@ namespace snet
 					else if (rc > 0 && (uint32_t)rc < cache_buffer.size())
 					{
 						cache_buffer.erase(0, rc);
-						// do_send();
+						//do_send();
 					}
 					else
 					{
@@ -333,6 +335,7 @@ namespace snet
 					do_send();
 				}
 
+				//do check closing state 
 				do_close();
 			}
 
@@ -346,8 +349,8 @@ namespace snet
 					if (rc < 0)
 					{
 						if (errno == EAGAIN || errno == EWOULDBLOCK)
-						{
-							do_read();
+						{ 
+						 
 						}
 						else
 						{
@@ -366,8 +369,11 @@ namespace snet
 					}
 					len = rc;
 				}
-
-				this->process_data(len);
+				//printf("read data %d\n", len); 
+				auto hasMore =  this->process_data(len);
+				if (hasMore  ){				
+					this->do_read(); 
+				}
 				return len;
 			}
 
@@ -401,7 +407,7 @@ namespace snet
 				}
 
 				read_buffer_pos -= readPos;
-				return true;
+				return read_buffer_pos > 0 ;
 			}
 
 			virtual void process_event(int32_t evts) override
@@ -419,8 +425,8 @@ namespace snet
 					int ret = this->do_read();
 					if (ret > 0)
 					{
-						 epoll_events |=   EPOLLIN;
-						 tcp_worker->mod_event(this->conn_sd,this, epoll_events );
+						//  epoll_events |=   EPOLLIN;
+						//  tcp_worker->mod_event(this->conn_sd,this, epoll_events );
 					}
 				}
 
