@@ -72,7 +72,7 @@ namespace snet
 				self->http_path = std::string_view(self->request_url.data() + urlInfo.field_data[UF_PATH].off,
 												   urlInfo.field_data[UF_PATH].len);
 
-				snet_dlog("http request path is {}", self->http_path);
+				snet_dlog("http request path is {}", std::string( self->http_path.data(), self->http_path.length()));
 
 				if (urlInfo.field_set & (1 << UF_QUERY))
 				{
@@ -189,7 +189,7 @@ namespace snet
 			{
 				HttpDecoder *self = (HttpDecoder *)hp->data;
 				self->parse_header.key = std::string_view(at, len);
-				snet_dlog("parse field {}", self->parse_header.key);
+				snet_dlog("parse field {}",std::string( self->parse_header.key.data(),  self->parse_header.key.length()) );
 				return 0;
 			}
 
@@ -198,7 +198,7 @@ namespace snet
 				HttpDecoder *self = (HttpDecoder *)hp->data;
 				self->parse_header.value = std::string_view(at, len);
 				self->headers.emplace_back(self->parse_header);
-				snet_dlog("parse field {}", self->parse_header.value);
+				snet_dlog("parse field {}",   std::string( self->parse_header.value.data(),  self->parse_header.value.length()) );
 				return 0;
 			}
 

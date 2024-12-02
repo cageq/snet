@@ -199,7 +199,11 @@ namespace snet
 			static const uint32_t base_timer_index = 1024;
 			uint32_t add_timer(TimerNodePtr node)
 			{
-				static std::atomic_uint64_t timer_index = base_timer_index;
+				#if __cplusplus == 201103L
+					static uint64_t timer_index = base_timer_index;
+				#else 
+					static std::atomic_uint64_t timer_index = base_timer_index;
+				#endif // __cplusplus > 201103L
 				node->timer_id = timer_index++;
 				heap_tree.insert(node);
 
