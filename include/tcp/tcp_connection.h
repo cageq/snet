@@ -299,6 +299,14 @@ namespace snet
 						{
 							send_buffer.swap(cache_buffer);
 						}
+					}else {
+						// no data to send
+						if (cache_buffer.empty()){
+							// no data to send
+							epoll_events &= ~EPOLLOUT;
+							tcp_worker->mod_event(this->conn_sd, this, epoll_events);
+							return ; 
+						} 
 					}
 				}
 
@@ -310,7 +318,7 @@ namespace snet
 					{
 						if (errno == EAGAIN || errno == EWOULDBLOCK)
 						{
-							// printf("send buffer full\n");
+							// send buffer is full
 							epoll_events |= EPOLLOUT;
 							tcp_worker->mod_event(this->conn_sd,this, epoll_events );
 						}
@@ -323,8 +331,7 @@ namespace snet
 					}
 					else if (rc > 0 && (uint32_t)rc < cache_buffer.size())
 					{
-						cache_buffer.erase(0, rc);
-						//do_send();
+						cache_buffer.erase(0, rc); 
 					}
 					else
 					{
@@ -336,7 +343,10 @@ namespace snet
 				}
 
 				//do check closing state 
-				do_close();
+				if (conn_status == ConnStatus::CONN_CLOSING){ 
+					do_close();
+				}
+		
 			}
 
 			int32_t do_read()
@@ -373,6 +383,10 @@ namespace snet
 				auto hasMore =  this->process_data(len);
 				if (hasMore  ){				
 					this->do_read(); 
+				}
+
+				if (conn_status == ConnStatus::CONN_CLOSING){ 
+					do_close();
 				}
 				return len;
 			}
