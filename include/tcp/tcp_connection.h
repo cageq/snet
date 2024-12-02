@@ -349,8 +349,8 @@ namespace snet
 					if (rc < 0)
 					{
 						if (errno == EAGAIN || errno == EWOULDBLOCK)
-						{ 
-						 
+						{
+
 						}
 						else
 						{
