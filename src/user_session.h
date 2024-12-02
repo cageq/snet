@@ -18,7 +18,7 @@ public:
   virtual int32_t handle_data(char *data, uint32_t len) override
   {
 
-    printf("recv: %s\n", data);
+    printf("recv: %.*s\n",len,  data);
 
     if (is_passive)
     {
