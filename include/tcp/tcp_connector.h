@@ -96,8 +96,7 @@ namespace snet
         conn->need_reconnect = true;
         conn->tcp_worker = tcp_worker;
         conn->init(0, host, port, false);
-        auto fd = conn->do_connect();
-
+        conn->do_connect();
         return conn;
       }
 

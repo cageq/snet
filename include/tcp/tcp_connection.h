@@ -207,7 +207,6 @@ namespace snet
 
 			void close()
 			{
-				static uint32_t close_count = 0; 
 				if (conn_status < ConnStatus::CONN_CLOSING)
 				{
 					conn_status = ConnStatus::CONN_CLOSING; 
