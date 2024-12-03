@@ -62,23 +62,11 @@ namespace snet
       {
         is_running = false;
       }
+ 
 
-      void process_timeout()
+      void enable_reconnect(bool flag = true )
       {
-
-        // for (auto &item : connection_factory->connection_map)
-        // {
-        //   auto conn = item.second;
-        //   if (!conn->is_open())
-        //   {
-        //     auto fd = conn->do_connect();
-        //     tcp_worker->mod_event(conn->conn_sd, conn.get());
-        //   }
-        // }
-      }
-
-      void enable_reconnect()
-      {
+        need_reconnect = flag; 
       }
 
       ConnectionPtr add_connection(const std::string &url)
@@ -93,12 +81,13 @@ namespace snet
       ConnectionPtr connect(const std::string &host, uint16_t port, Args &&...args)
       {
         ConnectionPtr conn = connection_factory->create(false, std::forward<Args>(args)...);
-        conn->need_reconnect = true;
+        conn->need_reconnect = need_reconnect;
         conn->tcp_worker = tcp_worker;
         conn->init(0, host, port, false);
         conn->do_connect();
         return conn;
       }
+      
 
       void add_connection(int sd, ConnectionPtr conn) { connection_factory->add_connection(sd, conn); }
       int32_t remove_connection(int sd)
@@ -116,6 +105,8 @@ namespace snet
       TcpWorkerPtr tcp_worker;
       TcpWorkerPtr default_worker;
       Factory *connection_factory = nullptr;
+
+      bool need_reconnect = true ; 
     };
 
   }

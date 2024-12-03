@@ -100,12 +100,8 @@ namespace snet
 				set_reuse();
 				// set_nonblocking(listen_sd);
 				do_bind(port, host.c_str());
-				do_listen();
-
-				//listen_worker->add_event(listen_sd, this,   EPOLLIN  | EPOLLERR );
-				listen_worker->add_event(listen_sd, this,   EPOLLIN  | EPOLLERR );
-
-	 
+				do_listen(); 
+				listen_worker->add_event(listen_sd, this,   EPOLLIN  | EPOLLERR ); 
 				return 0;
 			}
 

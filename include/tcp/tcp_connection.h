@@ -165,12 +165,13 @@ namespace snet
 			{
 				remote_host = host;
 				remote_port = port;
-				epoll_events = EPOLLET | EPOLLIN | EPOLLERR;
+				is_passive = passive;
+				epoll_events = EPOLLET | EPOLLIN  | EPOLLERR;
 				if (fd > 0)
 				{
 					this->conn_sd = fd;
 				}
-				is_passive = passive;
+				
 			}
 
 			void on_ready()
@@ -179,6 +180,8 @@ namespace snet
 				{
 					conn_status = ConnStatus::CONN_OPEN;
 					// this->set_tcpdelay();
+
+					//printf("on connection is ready fd %d\n", conn_sd);
 					this->handle_event(NetEvent::EVT_CONNECT);
 				}
 			}
@@ -206,7 +209,7 @@ namespace snet
 			}
 
 			void close()
-			{
+			{								
 				if (conn_status < ConnStatus::CONN_CLOSING)
 				{
 					conn_status = ConnStatus::CONN_CLOSING; 
@@ -231,6 +234,7 @@ namespace snet
 
 					if (need_reconnect)
 					{
+						printf("need reconnect fd %d\n", conn_sd);
 						conn_status = ConnStatus::CONN_IDLE;
 					}
 					else
@@ -239,8 +243,7 @@ namespace snet
 						if (conn_sd > 0)
 						{
 							static uint32_t close_count = 0; 
-							printf("close socket %d count %d\n", conn_sd, ++close_count); 
-						
+							printf("close socket %d count %d\n", conn_sd, ++close_count); 						
 							::close(conn_sd);
 							conn_sd = -1;
 						}
@@ -259,10 +262,9 @@ namespace snet
 			}
 
 			int32_t do_connect()
-			{
-				conn_sd = socket(AF_INET, SOCK_STREAM, 0);
-
-				printf("do connect socket fd %d remote host %s, port %d\n", conn_sd, remote_host.c_str(), remote_port);
+			{ 
+				conn_sd = socket(AF_INET, SOCK_STREAM, 0); 
+				//printf("do connect socket fd %d remote host %s, port %d\n", conn_sd, remote_host.c_str(), remote_port);
 				struct sockaddr_in servaddr;
 				memset(&servaddr, 0, sizeof(sockaddr_in));
 				servaddr.sin_family = AF_INET;
@@ -278,13 +280,14 @@ namespace snet
 				if (ret < 0)
 				{
 					::close(conn_sd);
-					printf("connect to %s:%d error: %s(errno: %d)\n", remote_host.c_str(), remote_port, strerror(errno), errno);
+					printf("connect to %s:%d failed: %s(errno: %d)\n", remote_host.c_str(), remote_port, strerror(errno), errno);
 					return -1;
 				}
+				set_noblock(conn_sd); 
 				printf("connect to %s:%d success fd %d status %d\n", remote_host.c_str(), remote_port, conn_sd, conn_status);
-
-				tcp_worker->add_event(conn_sd, this);
-
+ 
+				epoll_events |= EPOLLOUT;
+				tcp_worker->add_event(conn_sd, this, epoll_events ); 
 				return conn_sd;
 			}
 
@@ -341,10 +344,7 @@ namespace snet
 					do_send();
 				}
 
-				//do check closing state 
-				if (conn_status == ConnStatus::CONN_CLOSING){ 
-					do_close();
-				}
+
 		
 			}
 
@@ -372,7 +372,7 @@ namespace snet
 					}
 
 					if (rc == 0)
-					{
+					{						
 						this->close();
 						return -1;
 					}
@@ -383,10 +383,7 @@ namespace snet
 				if (hasMore  ){				
 					this->do_read(); 
 				}
-
-				if (conn_status == ConnStatus::CONN_CLOSING){ 
-					do_close();
-				}
+ 
 				return len;
 			}
 
@@ -425,7 +422,7 @@ namespace snet
 
 			virtual void process_event(int32_t evts) override
 			{
-				// printf("on tcp connection event %d status %d sd %d\n", evts,   conn_status ,  conn_sd);
+				 //printf("on tcp connection event %#x status %d sd %d\n", evts,  conn_status ,  conn_sd);
 				// if ((EPOLLIN == (evts & EPOLLIN)) ||(EPOLLOUT == (evts & EPOLLOUT)) ) {
 				if (conn_status == ConnStatus::CONN_IDLE)
 				{
@@ -434,7 +431,7 @@ namespace snet
 				//}
 
 				if (EPOLLIN == (evts & EPOLLIN))
-				{
+				{					
 					int ret = this->do_read();
 					if (ret > 0)
 					{
@@ -444,7 +441,7 @@ namespace snet
 				}
 
 				if (EPOLLOUT == (evts & EPOLLOUT))
-				{ 
+				{ 					
 					this->do_send(); 
 				}
 
@@ -452,6 +449,11 @@ namespace snet
 				{
 					printf("EPOLLERROR event %d ", evts);
 					this->close();
+				}
+
+								//do check closing state 
+				if (conn_status == ConnStatus::CONN_CLOSING){ 				
+					do_close();
 				}
 			}
 
@@ -470,6 +472,21 @@ namespace snet
 
 			int conn_sd = -1;
 			bool need_reconnect = false ;
+
+
+			static void set_noblock(int sock)
+			{
+				int opts = fcntl(sock, F_GETFL, 0);
+				if (opts < 0)
+				{
+					printf("fcntl(sock,GETFL)");
+					return;
+				}
+				if (fcntl(sock, F_SETFL, opts | O_NONBLOCK) < 0)
+				{
+					printf("fcntl(sock,SETFL,opts)");
+				}
+			}
 
 		protected:
 			template <typename P>
@@ -529,7 +546,7 @@ namespace snet
 			std::string send_buffer;
 			std::string cache_buffer;
 
-			int32_t epoll_events;
+			int32_t epoll_events ;
 			bool is_passive;
 			uint64_t conn_id{0}; // connection id
 #if __cplusplus > 201103L
