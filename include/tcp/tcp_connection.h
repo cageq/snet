@@ -295,57 +295,46 @@ namespace snet
 			{
 				{
 					std::lock_guard<std::mutex> lk(write_mutex);
-					if (!send_buffer.empty())
-					{
-						if (cache_buffer.empty())
-						{
-							send_buffer.swap(cache_buffer);
-						}
-					}else {
+					if (send_buffer.empty())
+					{						
+		  
 						// no data to send
-						if (cache_buffer.empty()){
-							// no data to send
-							epoll_events &= ~EPOLLOUT;
-							tcp_worker->mod_event(this->conn_sd, this, epoll_events);
-							return ; 
-						} 
+						epoll_events &= ~EPOLLOUT;
+						tcp_worker->mod_event(this->conn_sd, this, epoll_events);
+						return ; 
+				
 					}
 				}
 
-				if (!cache_buffer.empty())
+		
+				// printf("send to %d data size %lu\n",conn_sd,  send_buffer.size());
+				int rc = ::send(conn_sd, send_buffer.data(), send_buffer.size(), 0);
+				if (rc < 0)
 				{
-					// printf("send to %d data size %lu\n",conn_sd,  cache_buffer.size());
-					int rc = ::send(conn_sd, cache_buffer.data(), cache_buffer.size(), 0);
-					if (rc < 0)
+					if (errno == EAGAIN || errno == EWOULDBLOCK)
 					{
-						if (errno == EAGAIN || errno == EWOULDBLOCK)
-						{
-							// send buffer is full
-							epoll_events |= EPOLLOUT;
-							tcp_worker->mod_event(this->conn_sd,this, epoll_events );
-						}
-						else
-						{
-							perror("send failed");
-							close();
-						}
-						return;
-					}
-					else if (rc > 0 && (uint32_t)rc < cache_buffer.size())
-					{
-						cache_buffer.erase(0, rc); 
+						// send buffer is full
+						epoll_events |= EPOLLOUT;
+						tcp_worker->mod_event(this->conn_sd,this, epoll_events );
 					}
 					else
 					{
-						string_resize(cache_buffer, 0);
+						perror("send failed");
+						close();
 					}
-
-					// send until all buffer is empty
-					do_send();
+					return;
+				}
+				else if (rc > 0 && (uint32_t)rc < send_buffer.size())
+				{
+					send_buffer.erase(0, rc); 
+				}
+				else
+				{
+					string_resize(send_buffer, 0);
 				}
 
-
-		
+				// send until all buffer is empty
+				do_send(); 
 			}
 
 			int32_t do_read()
@@ -544,7 +533,8 @@ namespace snet
 
 			std::mutex write_mutex;
 			std::string send_buffer;
-			std::string cache_buffer;
+		 
+ 
 
 			int32_t epoll_events ;
 			bool is_passive;
