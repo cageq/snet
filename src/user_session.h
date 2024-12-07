@@ -1,6 +1,6 @@
 #pragma once
 #include "tcp_connection.h"
-using namespace snet;
+using namespace snet::tcp;
 class UserSession : public TcpConnection<UserSession>
 {
 public:
@@ -8,7 +8,7 @@ public:
   {
     printf("destroy user session \n");
   }
-  virtual bool handle_event(NetEvent evt) override
+  virtual bool handle_event(snet::NetEvent evt) override
   {
 
     printf("handle event in session  %d\n", evt);
@@ -18,7 +18,7 @@ public:
   virtual int32_t handle_data(char *data, uint32_t len) override
   {
 
-    printf("recv: %s\n", data);
+    printf("recv: %.*s\n",len,  data);
 
     if (is_passive)
     {

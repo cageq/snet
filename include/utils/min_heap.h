@@ -9,6 +9,7 @@
 
 namespace snet
 {
+	namespace utils {
 	struct NoneMutex
 	{
 		inline void lock() {}
@@ -91,5 +92,5 @@ namespace snet
 		std::vector<T> heap_data;
 		Mutex heap_mutex;
 	};
-
+	}
 }

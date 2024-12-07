@@ -4,6 +4,7 @@
 
 namespace snet
 {
+
     enum NetEvent
     {
         EVT_THREAD_INIT = 0,
