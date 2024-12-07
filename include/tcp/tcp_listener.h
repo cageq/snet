@@ -173,7 +173,7 @@ namespace snet
 
 					static uint32_t accept_count =0;
 
-					printf("accept new connection from %s:%u count %d\n", remoteHost, remotePort, ++accept_count);
+					printf("accept new connection from %s:%u count %d fd %d\n", remoteHost, remotePort, ++accept_count, clientFd);
 					conn->init(clientFd, remoteHost, remotePort, true);
 
 					worker->add_event(clientFd, conn.get() );

@@ -131,8 +131,10 @@ namespace snet
 					}
 					if (!isWriting)
 					{
-						notify_send();
+					//	notify_send();
+						do_send();	
 					}
+					
 					return sent;
 				}
 				printf("connection is not open %d , status %d\n", conn_sd, conn_status);
@@ -213,10 +215,7 @@ namespace snet
 				if (conn_status < ConnStatus::CONN_CLOSING)
 				{
 					conn_status = ConnStatus::CONN_CLOSING; 
-					//notify_send(); 
-					//shutdown(conn_sd,SHUT_RD);
-					epoll_events |= EPOLLOUT;
-					tcp_worker->mod_event(this->conn_sd, this, epoll_events);
+					notify_send(); 
 				}
 			}
 
@@ -254,9 +253,7 @@ namespace snet
 							auto self = this->shared_from_this(); 
 							tcp_worker->post_task([self ](){
 								self->factory->remove_connection(self->get_cid());
-							}); 
-						 
-							 
+							}); 						 
 						}
 					}
 				}
@@ -297,45 +294,44 @@ namespace snet
 				{
 					std::lock_guard<std::mutex> lk(write_mutex);
 					if (send_buffer.empty())
-					{						
-		  
+					{
 						// no data to send
 						epoll_events &= ~EPOLLOUT;
 						tcp_worker->mod_event(this->conn_sd, this, epoll_events);
-						return ; 
-				
+						return;
 					}
-				}
 
-		
-				// printf("send to %d data size %lu\n",conn_sd,  send_buffer.size());
-				int rc = ::send(conn_sd, send_buffer.data(), send_buffer.size(), 0);
-				if (rc < 0)
-				{
-					if (errno == EAGAIN || errno == EWOULDBLOCK)
+					// printf("send to %d data size %lu\n",conn_sd,  send_buffer.size());
+					int rc = ::send(conn_sd, send_buffer.data(), send_buffer.size(), 0);
+					if (rc < 0)
 					{
-						// send buffer is full
-						epoll_events |= EPOLLOUT;
-						tcp_worker->mod_event(this->conn_sd,this, epoll_events );
+						if (errno == EAGAIN || errno == EWOULDBLOCK)
+						{
+							// send buffer is full
+							epoll_events |= EPOLLOUT;
+							tcp_worker->mod_event(this->conn_sd, this, epoll_events);
+						}
+						else
+						{
+							perror("send failed");
+							close();
+						}
+						return;
+					}
+					else if (rc > 0 && (uint32_t)rc < send_buffer.size())
+					{
+
+						send_buffer.erase(0, rc);
 					}
 					else
 					{
-						perror("send failed");
-						close();
-					}
-					return;
-				}
-				else if (rc > 0 && (uint32_t)rc < send_buffer.size())
-				{
-					send_buffer.erase(0, rc); 
-				}
-				else
-				{
-					string_resize(send_buffer, 0);
-				}
 
+						string_resize(send_buffer, 0);
+						return ; 
+					}
+				}
 				// send until all buffer is empty
-				do_send(); 
+				do_send();
 			}
 
 			int32_t do_read()
