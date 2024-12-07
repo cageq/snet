@@ -214,8 +214,9 @@ namespace snet
 				{
 					conn_status = ConnStatus::CONN_CLOSING; 
 					//notify_send(); 
-					shutdown(conn_sd,SHUT_RD);
-					tcp_worker->mod_event(this->conn_sd, this, EPOLLOUT);
+					//shutdown(conn_sd,SHUT_RD);
+					epoll_events |= EPOLLOUT;
+					tcp_worker->mod_event(this->conn_sd, this, epoll_events);
 				}
 			}
 
@@ -356,7 +357,7 @@ namespace snet
 							this->close();
 							return -1;
 						}
-						// if zero, try to read again?
+		
 						return 0;
 					}
 
